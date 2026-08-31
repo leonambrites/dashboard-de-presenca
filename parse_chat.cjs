@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const rawChat = fs.readFileSync('_chat.txt', 'utf-8');
+const rawChat = fs.readFileSync('chat.txt', 'utf-8');
 const lines = rawChat.split('\n');
 
 const services = new Map(); // key: "Name - Date", value: object

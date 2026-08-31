@@ -1,8 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
-const DEFAULT_TEXT = `IGREJA: Vargem Pequena 
+const DEFAULT_TEXT_2026 = `IGREJA: Vargem Pequena 
 
 CULTO QUARTA - 11.02.2026
 Ministro: Obreiro Cristiano 
@@ -319,18 +321,18 @@ Tema: Amar é Servir
 - Visitantes: 0
 - Crianças: 61`;
 
-function parseReport(text: string) {
+function parseReportText(text: string) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-  const services: Array<{
+  const servicesMap = new Map<string, {
     name: string;
     date: string;
-    minister: string;
-    theme: string;
+    minister?: string;
+    theme?: string;
     adults: number;
     visitors: number;
     kids: number;
     total: number;
-  }> = [];
+  }>();
 
   let currentService: any = null;
 
@@ -340,7 +342,7 @@ function parseReport(text: string) {
     const dateMatch = line.match(/(.*?)\s*(?:-)?\s*(\d{2}\.\d{2}\.\d{4})/);
     if (dateMatch) {
       if (currentService && currentService.name) {
-        services.push(currentService);
+        servicesMap.set(`${currentService.name}-${currentService.date}`, currentService);
       }
       if (line.toLowerCase().includes('não houve') || line.startsWith('~')) {
         currentService = null;
@@ -377,24 +379,52 @@ function parseReport(text: string) {
   }
 
   if (currentService && currentService.name) {
-    services.push(currentService);
+    servicesMap.set(`${currentService.name}-${currentService.date}`, currentService);
   }
 
-  return services;
+  return Array.from(servicesMap.values());
 }
 
 async function main() {
-  console.log('🌱 Populando Vercel Postgres com a lista de cultos...');
-  const servicesData = parseReport(DEFAULT_TEXT);
+  console.log('🌱 Populando Vercel Postgres com o histórico de cultos...');
+
+  const allServices: Array<{
+    name: string;
+    date: string;
+    minister?: string;
+    theme?: string;
+    adults: number;
+    visitors: number;
+    kids: number;
+    total: number;
+  }> = [];
+
+  // 1. Tentar ler parsed_reports.txt caso exista (histórico de 2025/2024 extraído)
+  const parsedPath = path.join(process.cwd(), 'parsed_reports.txt');
+  if (fs.existsSync(parsedPath)) {
+    const text2025 = fs.readFileSync(parsedPath, 'utf-8');
+    allServices.push(...parseReportText(text2025));
+  }
+
+  // 2. Incluir texto padrão de 2026
+  allServices.push(...parseReportText(DEFAULT_TEXT_2026));
+
+  // Deduplicar serviços por nome e data
+  const uniqueMap = new Map<string, typeof allServices[0]>();
+  for (const s of allServices) {
+    uniqueMap.set(`${s.name}-${s.date}`, s);
+  }
+
+  const finalServices = Array.from(uniqueMap.values());
 
   let insertedCount = 0;
-  for (const s of servicesData) {
+  for (const s of finalServices) {
     await prisma.service.create({
       data: {
         name: s.name,
         date: s.date,
-        minister: s.minister,
-        theme: s.theme,
+        minister: s.minister || null,
+        theme: s.theme || null,
         adults: s.adults,
         visitors: s.visitors,
         kids: s.kids,
@@ -404,12 +434,12 @@ async function main() {
     insertedCount++;
   }
 
-  console.log(`✅ Sucesso! ${insertedCount} registros de cultos inseridos na tabela "services" do Vercel Postgres.`);
+  console.log(`✅ Sucesso! ${insertedCount} cultos históricos de 2024 a 2026 foram inseridos na tabela "services" do Vercel Postgres.`);
 }
 
 main()
   .catch(e => {
-    console.error('❌ Erro no seed:', e);
+    console.error('❌ Erro ao rodar seed do banco:', e);
     process.exit(1);
   })
   .finally(async () => {
