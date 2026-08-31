@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { prisma, sql } from './db';
+import { prisma, neonSql } from './db';
 
 dotenv.config();
 
@@ -9,32 +9,34 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Rota de verificação de saúde e criação inicial de tabela (caso ainda não criada via Prisma)
+// Rota de inicialização da tabela no Neon Postgres
 app.post('/api/init-db', async (_req: Request, res: Response) => {
   try {
-    await sql`
-      CREATE TABLE IF NOT EXISTS services (
-        id VARCHAR(255) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        date VARCHAR(255) NOT NULL,
-        minister VARCHAR(255),
-        theme TEXT,
-        adults INT DEFAULT 0,
-        visitors INT DEFAULT 0,
-        kids INT DEFAULT 0,
-        total INT DEFAULT 0,
-        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-    res.json({ success: true, message: 'Tabela services criada/verificada no Vercel Postgres com sucesso!' });
+    if (neonSql) {
+      await neonSql`
+        CREATE TABLE IF NOT EXISTS services (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          date VARCHAR(255) NOT NULL,
+          minister VARCHAR(255),
+          theme TEXT,
+          adults INT DEFAULT 0,
+          visitors INT DEFAULT 0,
+          kids INT DEFAULT 0,
+          total INT DEFAULT 0,
+          "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+    }
+    res.json({ success: true, message: 'Tabela services criada/verificada no Neon Postgres com sucesso!' });
   } catch (error: any) {
-    console.error('Erro ao inicializar Vercel Postgres:', error);
+    console.error('Erro ao inicializar Neon Postgres:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// GET /api/services - Buscar todos os cultos
+// GET /api/services - Buscar todos os cultos cadastrados no Neon Postgres
 app.get('/api/services', async (_req: Request, res: Response) => {
   try {
     const services = await prisma.service.findMany({
@@ -42,12 +44,15 @@ app.get('/api/services', async (_req: Request, res: Response) => {
     });
     return res.json(services);
   } catch (error: any) {
-    console.error('Erro ao buscar cultos do Vercel Postgres:', error);
+    console.error('Erro ao buscar cultos do Neon Postgres:', error);
     try {
-      const { rows } = await sql`SELECT * FROM services ORDER BY "createdAt" ASC`;
-      return res.json(rows);
+      if (neonSql) {
+        const rows = await neonSql`SELECT * FROM services ORDER BY "createdAt" ASC`;
+        return res.json(rows);
+      }
+      throw error;
     } catch (sqlErr: any) {
-      res.status(500).json({ error: 'Erro ao conectar ao banco de dados Vercel Postgres', details: error.message });
+      res.status(500).json({ error: 'Erro ao conectar ao banco de dados Neon Postgres', details: sqlErr.message });
     }
   }
 });
@@ -65,8 +70,8 @@ app.post('/api/services', async (req: Request, res: Response) => {
       data: {
         name,
         date,
-        minister: minister || '',
-        theme: theme || '',
+        minister: minister || null,
+        theme: theme || null,
         adults: adultsNum,
         visitors: visitorsNum,
         kids: kidsNum,
@@ -80,7 +85,7 @@ app.post('/api/services', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/services/bulk - Importar lote de cultos
+// POST /api/services/bulk - Importar lote de cultos no Neon Postgres
 app.post('/api/services/bulk', async (req: Request, res: Response) => {
   try {
     const { services } = req.body;
@@ -99,8 +104,8 @@ app.post('/api/services/bulk', async (req: Request, res: Response) => {
         data: {
           name: service.name,
           date: service.date,
-          minister: service.minister || '',
-          theme: service.theme || '',
+          minister: service.minister || null,
+          theme: service.theme || null,
           adults: adultsNum,
           visitors: visitorsNum,
           kids: kidsNum,
@@ -132,8 +137,8 @@ app.put('/api/services/:id', async (req: Request, res: Response) => {
       data: {
         name,
         date,
-        minister,
-        theme,
+        minister: minister || null,
+        theme: theme || null,
         adults: adultsNum,
         visitors: visitorsNum,
         kids: kidsNum,
@@ -166,7 +171,7 @@ app.delete('/api/services/:id', async (req: Request, res: Response) => {
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`🚀 Servidor rodando na porta ${PORT} conectado ao Neon Postgres`);
   });
 }
 
