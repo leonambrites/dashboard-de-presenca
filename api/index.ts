@@ -149,7 +149,7 @@ router.post('/services', async (req: Request, res: Response) => {
   }
 });
 
-// POST /services/bulk - Importação em lote para o Neon Postgres (com upsert por nome e data)
+// POST /services/bulk - Importação em lote ultra-rápida via paralelo Promise.all
 router.post('/services/bulk', async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
@@ -158,31 +158,32 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Formato inválido. Esperado array de cultos.' });
     }
 
-    const createdServices = [];
-    for (const service of services) {
-      const stdName = standardizeServiceType(service.name);
-      const stdMinister = standardizeMinister(service.minister);
-      const adultsNum = Number(service.adults) || 0;
-      const visitorsNum = Number(service.visitors) || 0;
-      const kidsNum = Number(service.kids) || 0;
-      const total = adultsNum + visitorsNum + kidsNum;
-      const id = service.id || Math.random().toString(36).substring(2, 11);
+    const createdServices = await Promise.all(
+      services.map(async (service: any) => {
+        const stdName = standardizeServiceType(service.name);
+        const stdMinister = standardizeMinister(service.minister);
+        const adultsNum = Number(service.adults) || 0;
+        const visitorsNum = Number(service.visitors) || 0;
+        const kidsNum = Number(service.kids) || 0;
+        const total = adultsNum + visitorsNum + kidsNum;
+        const id = service.id || Math.random().toString(36).substring(2, 11);
 
-      const rows = await sql`
-        INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
-        VALUES (${id}, ${stdName}, ${service.date}, ${stdMinister}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (name, date) DO UPDATE SET
-          minister = EXCLUDED.minister,
-          theme = COALESCE(EXCLUDED.theme, services.theme),
-          adults = EXCLUDED.adults,
-          visitors = EXCLUDED.visitors,
-          kids = EXCLUDED.kids,
-          total = EXCLUDED.total,
-          "updatedAt" = CURRENT_TIMESTAMP
-        RETURNING *
-      `;
-      createdServices.push(rows[0]);
-    }
+        const rows = await sql`
+          INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
+          VALUES (${id}, ${stdName}, ${service.date}, ${stdMinister}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          ON CONFLICT (name, date) DO UPDATE SET
+            minister = EXCLUDED.minister,
+            theme = COALESCE(EXCLUDED.theme, services.theme),
+            adults = EXCLUDED.adults,
+            visitors = EXCLUDED.visitors,
+            kids = EXCLUDED.kids,
+            total = EXCLUDED.total,
+            "updatedAt" = CURRENT_TIMESTAMP
+          RETURNING *
+        `;
+        return rows[0];
+      })
+    );
 
     res.status(201).json({ success: true, count: createdServices.length, data: createdServices });
   } catch (error: any) {
