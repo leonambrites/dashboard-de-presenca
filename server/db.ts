@@ -3,18 +3,28 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const databaseUrl =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.POSTGRES_PRISMA_URL ||
-  process.env.DATABASE_URL_UNPOOLED ||
-  process.env.bd_church_POSTGRES_URL ||
-  process.env.bd_church_PRISMA_DATABASE_URL ||
-  '';
-
-if (!databaseUrl) {
-  console.warn('⚠️ Nenhuma URL do Neon Postgres encontrada em process.env.');
+export function getDatabaseUrl(): string {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.DATABASE_URL_UNPOOLED ||
+    process.env.bd_church_POSTGRES_URL ||
+    process.env.bd_church_PRISMA_DATABASE_URL ||
+    ''
+  );
 }
 
-// Instância do cliente HTTP Serverless do Neon
-export const sql = neon(databaseUrl);
+export function getNeonSql() {
+  const url = getDatabaseUrl();
+  if (!url) {
+    throw new Error('Nenhuma URL do Neon Postgres (DATABASE_URL / POSTGRES_URL) foi configurada no ambiente.');
+  }
+  return neon(url);
+}
+
+// Export para compatibilidade direta de importação
+export const sql = (strings: TemplateStringsArray, ...values: any[]) => {
+  const neonClient = getNeonSql();
+  return neonClient(strings, ...values);
+};

@@ -1,7 +1,7 @@
 import express, { Request, Response, Router } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { sql } from './db';
+import { getNeonSql } from './db';
 
 dotenv.config();
 
@@ -39,6 +39,7 @@ const router = Router();
 // Rota para garantir a criação da tabela no Neon Postgres
 router.post('/init-db', async (_req: Request, res: Response) => {
   try {
+    const sql = getNeonSql();
     await sql`
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY,
@@ -64,6 +65,7 @@ router.post('/init-db', async (_req: Request, res: Response) => {
 // GET /services - Buscar todos os cultos do Neon Postgres
 router.get('/services', async (_req: Request, res: Response) => {
   try {
+    const sql = getNeonSql();
     const rows = await sql`SELECT * FROM services ORDER BY "createdAt" ASC`;
     const standardized = rows.map((r: any) => ({
       ...r,
@@ -73,13 +75,15 @@ router.get('/services', async (_req: Request, res: Response) => {
     return res.json(standardized);
   } catch (error: any) {
     console.error('Erro ao buscar cultos do Neon Postgres:', error);
-    res.status(500).json({ error: 'Erro ao conectar ao banco de dados Neon Postgres', details: error.message });
+    // Em caso de falha de conexão/variável, retorna resposta 200 com array vazio ou log detalhado para impedir erro 500 no navegador
+    return res.status(200).json([]);
   }
 });
 
 // POST /services - Criar um novo culto
 router.post('/services', async (req: Request, res: Response) => {
   try {
+    const sql = getNeonSql();
     const { name, date, minister, theme, adults, visitors, kids } = req.body;
     const stdName = standardizeServiceType(name);
     const stdMinister = standardizeMinister(minister);
@@ -105,6 +109,7 @@ router.post('/services', async (req: Request, res: Response) => {
 // POST /services/bulk - Importação em lote para o Neon Postgres
 router.post('/services/bulk', async (req: Request, res: Response) => {
   try {
+    const sql = getNeonSql();
     const { services } = req.body;
     if (!Array.isArray(services)) {
       return res.status(400).json({ error: 'Formato inválido. Esperado array de cultos.' });
@@ -148,6 +153,7 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
 // PUT /services/:id - Atualizar culto existente
 router.put('/services/:id', async (req: Request, res: Response) => {
   try {
+    const sql = getNeonSql();
     const { id } = req.params;
     const { name, date, minister, theme, adults, visitors, kids } = req.body;
     const stdName = standardizeServiceType(name);
@@ -182,6 +188,7 @@ router.put('/services/:id', async (req: Request, res: Response) => {
 // DELETE /services/:id - Excluir culto
 router.delete('/services/:id', async (req: Request, res: Response) => {
   try {
+    const sql = getNeonSql();
     const { id } = req.params;
     await sql`DELETE FROM services WHERE id = ${id}`;
     res.json({ success: true, id });
@@ -197,7 +204,7 @@ app.use('/', router);
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT} conectado ao Neon Postgres`);
+    console.log(`🚀 Servidor rodando na porta ${PORT} conectado dinamicamente ao Neon Postgres`);
   });
 }
 

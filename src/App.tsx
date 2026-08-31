@@ -1555,7 +1555,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="h-[320px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height="100%">
                         {timelineMode === 'types' ? (
                           <LineChart data={monthlyEvolution} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -1835,7 +1835,7 @@ export default function App() {
                     </p>
                   </div>
                   <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height="100%">
                       <BarChart data={averagesByType} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
