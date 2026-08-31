@@ -1,7 +1,7 @@
 import express, { Request, Response, Router } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { getNeonSql } from './db';
+import { getNeonSql } from './db.js';
 
 dotenv.config();
 
@@ -75,7 +75,6 @@ router.get('/services', async (_req: Request, res: Response) => {
     return res.json(standardized);
   } catch (error: any) {
     console.error('Erro ao buscar cultos do Neon Postgres:', error);
-    // Em caso de falha de conexão/variável, retorna resposta 200 com array vazio ou log detalhado para impedir erro 500 no navegador
     return res.status(200).json([]);
   }
 });
