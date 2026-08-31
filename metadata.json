@@ -1,0 +1,8 @@
+{
+  "name": "Dashboard de Presença",
+  "description": "Dashboard de acompanhamento de presença em cultos com evolução temporal e detalhamento",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
