@@ -646,6 +646,7 @@ export default function App() {
   
   const [accumulatedServices, setAccumulatedServices] = useState<ServiceData[]>(initialData.services);
   const [churchName, setChurchName] = useState(initialData.churchName);
+  const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMinister, setSelectedMinister] = useState<string>('');
   const [selectedServiceType, setSelectedServiceType] = useState<string>('');
   const [timelineMode, setTimelineMode] = useState<'types' | 'composition' | 'individual'>('types');
@@ -749,6 +750,25 @@ export default function App() {
   }, [accumulatedServices]);
 
   // Options for filters with counts
+  const yearOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    accumulatedServices.forEach(s => {
+      if (s.date) {
+        const parts = s.date.replace(/[\/\-]/g, '.').split('.');
+        if (parts.length === 3) {
+          let year = parts[2].trim();
+          if (year.length === 2) year = '20' + year;
+          if (year) {
+            counts[year] = (counts[year] || 0) + 1;
+          }
+        }
+      }
+    });
+    return Object.entries(counts)
+      .map(([year, count]) => ({ year, count }))
+      .sort((a, b) => b.year.localeCompare(a.year));
+  }, [accumulatedServices]);
+
   const ministerOptions = useMemo(() => {
     const counts: Record<string, number> = {};
     accumulatedServices.forEach(s => {
@@ -778,13 +798,21 @@ export default function App() {
     return accumulatedServices.filter(s => {
       const matchMinister = !selectedMinister || s.minister === selectedMinister;
       const matchType = !selectedServiceType || s.name === selectedServiceType;
-      return matchMinister && matchType;
+      let matchYear = true;
+      if (selectedYear) {
+        const parts = s.date ? s.date.replace(/[\/\-]/g, '.').split('.') : [];
+        let year = parts.length === 3 ? parts[2].trim() : '';
+        if (year.length === 2) year = '20' + year;
+        matchYear = year === selectedYear;
+      }
+      return matchMinister && matchType && matchYear;
     });
-  }, [accumulatedServices, selectedMinister, selectedServiceType]);
+  }, [accumulatedServices, selectedMinister, selectedServiceType, selectedYear]);
 
-  const activeFiltersCount = (selectedMinister ? 1 : 0) + (selectedServiceType ? 1 : 0);
+  const activeFiltersCount = (selectedYear ? 1 : 0) + (selectedMinister ? 1 : 0) + (selectedServiceType ? 1 : 0);
 
   const handleResetFilters = () => {
+    setSelectedYear('');
     setSelectedMinister('');
     setSelectedServiceType('');
   };
@@ -1219,6 +1247,22 @@ export default function App() {
                 <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
                   <SlidersHorizontal className="w-4 h-4 text-blue-600" />
                   <span>Filtros Globais:</span>
+                </div>
+
+                {/* Ano Filter */}
+                <div className="relative min-w-[160px]">
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer font-medium"
+                  >
+                    <option value="">Todos os Anos</option>
+                    {yearOptions.map(y => (
+                      <option key={y.year} value={y.year}>
+                        Ano {y.year} ({y.count} {y.count === 1 ? 'culto' : 'cultos'})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Ministro Filter */}
