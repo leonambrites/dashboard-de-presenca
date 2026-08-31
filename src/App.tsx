@@ -651,7 +651,7 @@ export default function App() {
   const [isInputModalOpen, setIsInputModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Carregar ou inicializar dados no Vercel Postgres
+  // Carregar dados do Neon Postgres
   useEffect(() => {
     async function loadServices() {
       try {
@@ -659,14 +659,11 @@ export default function App() {
         if (dbServices && dbServices.length > 0) {
           setAccumulatedServices(dbServices);
         } else {
-          // Se o Vercel Postgres estiver vazio, envia os dados iniciais
-          const seeded = await api.importServices(initialData.services);
-          if (seeded && seeded.length > 0) {
-            setAccumulatedServices(seeded);
-          }
+          setAccumulatedServices(initialData.services);
         }
       } catch (err) {
-        console.warn('Banco Vercel Postgres indisponível localmente. Operando em memória local.', err);
+        console.warn('Banco Neon Postgres indisponível localmente. Operando com histórico local.', err);
+        setAccumulatedServices(initialData.services);
       }
     }
     loadServices();
