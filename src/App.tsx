@@ -652,6 +652,35 @@ export default function App() {
   const [timelineMode, setTimelineMode] = useState<'composition' | 'types' | 'individual'>('composition');
   const [isInputModalOpen, setIsInputModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsAppInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallPwa = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsAppInstalled(true);
+    }
+    setDeferredPrompt(null);
+  };
 
   // Carregar dados do Neon Postgres
   useEffect(() => {
@@ -1158,17 +1187,33 @@ export default function App() {
         
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
-              <TrendingUp className="text-blue-600" />
-              Dashboard de Presença
-            </h1>
-            <p className="text-slate-500 mt-1 flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
-              {churchName}
-            </p>
+          <div className="flex items-center gap-3.5">
+            <img 
+              src="/logo.png" 
+              alt="MNCS Logo" 
+              className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover shadow-sm border-2 border-slate-900 bg-black shrink-0"
+            />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
+                Dashboard de Presença
+              </h1>
+              <p className="text-slate-500 mt-0.5 flex items-center gap-1 font-medium">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                {churchName}
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            {deferredPrompt && !isAppInstalled && (
+              <button
+                onClick={handleInstallPwa}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow-sm transition-all cursor-pointer animate-pulse"
+                title="Instalar Dashboard como Aplicativo no seu dispositivo"
+              >
+                <Download className="w-4 h-4" />
+                <span>Instalar App</span>
+              </button>
+            )}
             {dateRange && (
               <div className="flex items-center gap-2 text-sm font-medium text-blue-700 bg-blue-50 px-4 py-2 rounded-lg">
                 <Clock className="w-4 h-4" />

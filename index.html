@@ -3,18 +3,37 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard de Presença no Culto</title>
-  <meta name="description"
-    content="Dashboard de acompanhamento de presença em cultos com evolução temporal e detalhamento" />
-  <meta property="og:title" content="Dashboard de Presença" />
-  <meta property="og:description"
-    content="Dashboard de acompanhamento de presença em cultos com evolução temporal e detalhamento" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Dashboard de Presença - MNCS Vargem Pequena</title>
+  <meta name="description" content="Dashboard de acompanhamento de presença em cultos com evolução temporal e detalhamento - MNCS Vargem Pequena" />
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Dashboard de Presença - MNCS Vargem Pequena" />
+  <meta property="og:description" content="Dashboard de acompanhamento de presença em cultos com evolução temporal e detalhamento" />
+  <meta property="og:image" content="/icon-512.png" />
 </head>
 
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('✅ Service Worker PWA registrado com sucesso:', reg.scope))
+          .catch((err) => console.warn('⚠️ Falha ao registrar Service Worker:', err));
+      });
+    }
+  </script>
 </body>
 
 </html>
