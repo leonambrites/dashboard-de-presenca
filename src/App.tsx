@@ -649,7 +649,7 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMinister, setSelectedMinister] = useState<string>('');
   const [selectedServiceType, setSelectedServiceType] = useState<string>('');
-  const [timelineMode, setTimelineMode] = useState<'types' | 'composition' | 'individual'>('types');
+  const [timelineMode, setTimelineMode] = useState<'composition' | 'types' | 'individual'>('composition');
   const [isInputModalOpen, setIsInputModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -1715,32 +1715,32 @@ export default function App() {
                                       <div className="border-b border-slate-100 pb-1.5 flex items-center justify-between gap-2">
                                         <p className="font-semibold text-slate-800 text-sm">{data.fullLabel}</p>
                                         <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                                          Média Mensal
+                                          Média pelos 3 Indicadores
                                         </span>
                                       </div>
                                       <div className="space-y-1.5 text-slate-600">
                                         <div className="flex justify-between items-center gap-4">
                                           <span className="flex items-center gap-1.5 font-medium">
-                                            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"/> Membros Adultos:
+                                            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"/> Média Adultos:
                                           </span>
-                                          <span className="font-semibold text-slate-900">{data.avgMembers}</span>
+                                          <span className="font-semibold text-slate-900">{data.avgAdults}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center gap-4 text-slate-500 pl-2">
+                                          <span className="flex items-center gap-1.5 font-medium">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"/> • Visitantes (inclusos):
+                                          </span>
+                                          <span className="font-semibold text-emerald-600">{data.avgVisitors}</span>
                                         </div>
                                         <div className="flex justify-between items-center gap-4">
                                           <span className="flex items-center gap-1.5 font-medium">
-                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"/> Visitantes:
-                                          </span>
-                                          <span className="font-semibold text-slate-900">{data.avgVisitors}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center gap-4">
-                                          <span className="flex items-center gap-1.5 font-medium">
-                                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"/> Crianças:
+                                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"/> Média Crianças:
                                           </span>
                                           <span className="font-semibold text-slate-900">{data.avgKids}</span>
                                         </div>
                                       </div>
                                       <div className="border-t border-slate-100 pt-1.5 flex justify-between items-center font-bold text-slate-900 text-xs">
-                                        <span>Média Total Real:</span>
-                                        <span className="text-slate-900 text-sm font-bold">{data.avgTotal}</span>
+                                        <span>Média Total (Adultos + Crianças):</span>
+                                        <span className="text-blue-600 text-sm font-bold">{data.avgTotal}</span>
                                       </div>
                                     </div>
                                   );
@@ -1751,19 +1751,21 @@ export default function App() {
                             <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                             <Line 
                               type="monotone" 
-                              dataKey="avgTotal" 
-                              name="Total Geral" 
-                              stroke="#0f172a" 
+                              dataKey="avgAdults" 
+                              name="Adultos" 
+                              stroke="#2563eb" 
                               strokeWidth={3} 
-                              dot={{ r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#fff' }}
+                              dot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
+                              activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2, fill: '#fff' }}
                             />
                             <Line 
                               type="monotone" 
-                              dataKey="avgMembers" 
-                              name="Membros Adultos" 
-                              stroke="#2563eb" 
+                              dataKey="avgVisitors" 
+                              name="Visitantes" 
+                              stroke="#10b981" 
                               strokeWidth={2.5} 
-                              dot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
+                              dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }}
+                              activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#fff' }}
                             />
                             <Line 
                               type="monotone" 
@@ -1772,14 +1774,7 @@ export default function App() {
                               stroke="#f59e0b" 
                               strokeWidth={2.5} 
                               dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }}
-                            />
-                            <Line 
-                              type="monotone" 
-                              dataKey="avgVisitors" 
-                              name="Visitantes" 
-                              stroke="#10b981" 
-                              strokeWidth={2} 
-                              dot={{ r: 3, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }}
+                              activeDot={{ r: 6, stroke: '#f59e0b', strokeWidth: 2, fill: '#fff' }}
                             />
                           </LineChart>
                         ) : (
