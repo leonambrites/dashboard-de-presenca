@@ -5,18 +5,24 @@ import { neon } from '@neondatabase/serverless';
 
 dotenv.config();
 
-const DEFAULT_NEON_URL = 'postgresql://neondb_owner:npg_zTKaut9D1RqB@ep-quiet-dust-aw3ylx9p-pooler.c-12.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+const DEFAULT_NEON_URL = 'postgresql://neondb_owner:npg_zTKaut9D1RqB@ep-quiet-dust-aw3ylx9p.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
 function getDatabaseUrl(): string {
-  return (
+  const rawUrl =
+    process.env.DATABASE_URL_UNPOOLED ||
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.POSTGRES_PRISMA_URL ||
-    process.env.DATABASE_URL_UNPOOLED ||
     process.env.bd_church_POSTGRES_URL ||
     process.env.bd_church_PRISMA_DATABASE_URL ||
-    DEFAULT_NEON_URL
-  );
+    DEFAULT_NEON_URL;
+
+  // Higieniza a URL para remover o sufixo -pooler e parâmetros incompatíveis com o driver HTTP da Neon
+  return rawUrl
+    .replace('-pooler', '')
+    .replace('channel_binding=require&', '')
+    .replace('&channel_binding=require', '')
+    .replace('?channel_binding=require', '');
 }
 
 function getNeonSql() {
