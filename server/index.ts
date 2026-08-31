@@ -9,6 +9,31 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Padronização do nome do culto
+function standardizeServiceType(name?: string | null): string {
+  if (!name) return 'CULTO DOMINGO';
+  const upper = name.toUpperCase();
+  if (upper.includes('DOMINGO')) return 'CULTO DOMINGO';
+  if (upper.includes('QUARTA')) return 'CULTO QUARTA';
+  if (upper.includes('PRESS POWER') || upper.includes('PRESSPOWER')) return 'PRESS POWER';
+  return name.trim();
+}
+
+// Padronização do nome do ministro/preletor
+function standardizeMinister(minister?: string | null): string | null {
+  if (!minister) return null;
+  const trimmed = minister.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (lower.includes('amilton')) return 'Pr Amilton';
+  if (lower.includes('erick')) return 'Pr Erick';
+  if (lower.includes('cristiano')) return 'Obreiro Cristiano';
+  if (lower.includes('nelson')) return 'Evangelista Nelson';
+  if (lower.includes('douglas')) return 'Pr Douglas';
+
+  return trimmed;
+}
+
 const router = Router();
 
 // Rota para garantir a criação da tabela no Neon Postgres
@@ -40,7 +65,12 @@ router.post('/init-db', async (_req: Request, res: Response) => {
 router.get('/services', async (_req: Request, res: Response) => {
   try {
     const rows = await sql`SELECT * FROM services ORDER BY "createdAt" ASC`;
-    return res.json(rows);
+    const standardized = rows.map((r: any) => ({
+      ...r,
+      name: standardizeServiceType(r.name),
+      minister: standardizeMinister(r.minister)
+    }));
+    return res.json(standardized);
   } catch (error: any) {
     console.error('Erro ao buscar cultos do Neon Postgres:', error);
     res.status(500).json({ error: 'Erro ao conectar ao banco de dados Neon Postgres', details: error.message });
@@ -51,6 +81,8 @@ router.get('/services', async (_req: Request, res: Response) => {
 router.post('/services', async (req: Request, res: Response) => {
   try {
     const { name, date, minister, theme, adults, visitors, kids } = req.body;
+    const stdName = standardizeServiceType(name);
+    const stdMinister = standardizeMinister(minister);
     const adultsNum = Number(adults) || 0;
     const visitorsNum = Number(visitors) || 0;
     const kidsNum = Number(kids) || 0;
@@ -59,7 +91,7 @@ router.post('/services', async (req: Request, res: Response) => {
 
     const rows = await sql`
       INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
-      VALUES (${id}, ${name}, ${date}, ${minister || null}, ${theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      VALUES (${id}, ${stdName}, ${date}, ${stdMinister}, ${theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `;
 
@@ -80,6 +112,8 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
 
     const createdServices = [];
     for (const service of services) {
+      const stdName = standardizeServiceType(service.name);
+      const stdMinister = standardizeMinister(service.minister);
       const adultsNum = Number(service.adults) || 0;
       const visitorsNum = Number(service.visitors) || 0;
       const kidsNum = Number(service.kids) || 0;
@@ -88,7 +122,7 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
 
       const rows = await sql`
         INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
-        VALUES (${id}, ${service.name}, ${service.date}, ${service.minister || null}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        VALUES (${id}, ${stdName}, ${service.date}, ${stdMinister}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           date = EXCLUDED.date,
@@ -116,6 +150,8 @@ router.put('/services/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, date, minister, theme, adults, visitors, kids } = req.body;
+    const stdName = standardizeServiceType(name);
+    const stdMinister = standardizeMinister(minister);
     const adultsNum = Number(adults) || 0;
     const visitorsNum = Number(visitors) || 0;
     const kidsNum = Number(kids) || 0;
@@ -123,9 +159,9 @@ router.put('/services/:id', async (req: Request, res: Response) => {
 
     const rows = await sql`
       UPDATE services
-      SET name = ${name},
+      SET name = ${stdName},
           date = ${date},
-          minister = ${minister || null},
+          minister = ${stdMinister},
           theme = ${theme || null},
           adults = ${adultsNum},
           visitors = ${visitorsNum},
@@ -155,11 +191,9 @@ router.delete('/services/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Monta o roteador tanto no prefixo /api quanto no / para suporte 100% transparente na Vercel e local
 app.use('/api', router);
 app.use('/', router);
 
-// Servidor local caso executado via Node
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
