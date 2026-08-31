@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, Router } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { sql } from './db';
@@ -9,8 +9,10 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+const router = Router();
+
 // Rota para garantir a criação da tabela no Neon Postgres
-app.post('/api/init-db', async (_req: Request, res: Response) => {
+router.post('/init-db', async (_req: Request, res: Response) => {
   try {
     await sql`
       CREATE TABLE IF NOT EXISTS services (
@@ -34,8 +36,8 @@ app.post('/api/init-db', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/services - Buscar todos os cultos do Neon Postgres
-app.get('/api/services', async (_req: Request, res: Response) => {
+// GET /services - Buscar todos os cultos do Neon Postgres
+router.get('/services', async (_req: Request, res: Response) => {
   try {
     const rows = await sql`SELECT * FROM services ORDER BY "createdAt" ASC`;
     return res.json(rows);
@@ -45,8 +47,8 @@ app.get('/api/services', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/services - Criar um novo culto
-app.post('/api/services', async (req: Request, res: Response) => {
+// POST /services - Criar um novo culto
+router.post('/services', async (req: Request, res: Response) => {
   try {
     const { name, date, minister, theme, adults, visitors, kids } = req.body;
     const adultsNum = Number(adults) || 0;
@@ -56,8 +58,8 @@ app.post('/api/services', async (req: Request, res: Response) => {
     const id = Math.random().toString(36).substring(2, 11);
 
     const rows = await sql`
-      INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total)
-      VALUES (${id}, ${name}, ${date}, ${minister || null}, ${theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total})
+      INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
+      VALUES (${id}, ${name}, ${date}, ${minister || null}, ${theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `;
 
@@ -68,8 +70,8 @@ app.post('/api/services', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/services/bulk - Importação em lote para o Neon Postgres
-app.post('/api/services/bulk', async (req: Request, res: Response) => {
+// POST /services/bulk - Importação em lote para o Neon Postgres
+router.post('/services/bulk', async (req: Request, res: Response) => {
   try {
     const { services } = req.body;
     if (!Array.isArray(services)) {
@@ -85,8 +87,8 @@ app.post('/api/services/bulk', async (req: Request, res: Response) => {
       const id = service.id || Math.random().toString(36).substring(2, 11);
 
       const rows = await sql`
-        INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total)
-        VALUES (${id}, ${service.name}, ${service.date}, ${service.minister || null}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total})
+        INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
+        VALUES (${id}, ${service.name}, ${service.date}, ${service.minister || null}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           date = EXCLUDED.date,
@@ -109,8 +111,8 @@ app.post('/api/services/bulk', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/services/:id - Atualizar culto existente
-app.put('/api/services/:id', async (req: Request, res: Response) => {
+// PUT /services/:id - Atualizar culto existente
+router.put('/services/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, date, minister, theme, adults, visitors, kids } = req.body;
@@ -141,8 +143,8 @@ app.put('/api/services/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/services/:id - Excluir culto
-app.delete('/api/services/:id', async (req: Request, res: Response) => {
+// DELETE /services/:id - Excluir culto
+router.delete('/services/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await sql`DELETE FROM services WHERE id = ${id}`;
@@ -153,11 +155,15 @@ app.delete('/api/services/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Monta o roteador tanto no prefixo /api quanto no / para suporte 100% transparente na Vercel e local
+app.use('/api', router);
+app.use('/', router);
+
 // Servidor local caso executado via Node
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT} conectado diretamente ao Neon Postgres`);
+    console.log(`🚀 Servidor rodando na porta ${PORT} conectado ao Neon Postgres`);
   });
 }
 

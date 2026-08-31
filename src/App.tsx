@@ -687,8 +687,9 @@ export default function App() {
       await api.importServices(parsed.services);
       const freshData = await api.getServices();
       setAccumulatedServices(freshData);
-    } catch (err) {
-      console.warn('Erro ao persistir no Vercel Postgres, fallback em memória', err);
+      setToastMessage(`✅ ${count} ${count === 1 ? 'culto gravado' : 'cultos acumulados'} no Neon Postgres com sucesso!`);
+    } catch (err: any) {
+      console.warn('Erro ao persistir no Neon Postgres, usando memória local:', err);
       setAccumulatedServices(prev => {
         const combined = [...prev];
         parsed.services.forEach(newService => {
@@ -701,12 +702,12 @@ export default function App() {
         });
         return combined;
       });
+      setToastMessage(`⚠️ Cultos acumulados localmente (Banco offline: ${err.message || 'Erro de conexão'})`);
     }
 
-    setToastMessage(`${count} ${count === 1 ? 'culto adicionado' : 'cultos processados e acumulados'} no Vercel Postgres com sucesso!`);
     setTimeout(() => {
       setToastMessage(null);
-    }, 4500);
+    }, 5000);
   };
 
   const handleAddSingleService = async (newService: ServiceData) => {
@@ -714,8 +715,9 @@ export default function App() {
       await api.createService(newService);
       const freshData = await api.getServices();
       setAccumulatedServices(freshData);
-    } catch (err) {
-      console.warn('Erro ao salvar no Vercel Postgres, fallback em memória', err);
+      setToastMessage(`✅ Culto "${newService.name}" (${newService.date}) salvo no Neon Postgres com sucesso!`);
+    } catch (err: any) {
+      console.warn('Erro ao salvar no Neon Postgres, usando memória local:', err);
       setAccumulatedServices(prev => {
         const combined = [...prev];
         const existsIndex = combined.findIndex(s => s.name === newService.name && s.date === newService.date);
@@ -726,12 +728,12 @@ export default function App() {
         }
         return combined;
       });
+      setToastMessage(`⚠️ Culto salvo em memória local (Banco offline: ${err.message || 'Erro de conexão'})`);
     }
 
-    setToastMessage(`Culto "${newService.name}" (${newService.date}) salvo com sucesso!`);
     setTimeout(() => {
       setToastMessage(null);
-    }, 4500);
+    }, 5000);
   };
 
   const clearData = () => {
