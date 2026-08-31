@@ -1,30 +1,25 @@
-import { PrismaClient } from '@prisma/client';
+import { neon } from '@neondatabase/serverless';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-if (!process.env.POSTGRES_PRISMA_URL) {
-  process.env.POSTGRES_PRISMA_URL =
-    process.env.bd_church_PRISMA_DATABASE_URL ||
-    process.env.bd_church_POSTGRES_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.DATABASE_URL ||
-    '';
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.DATABASE_URL_UNPOOLED ||
+  process.env.bd_church_POSTGRES_URL ||
+  process.env.bd_church_PRISMA_DATABASE_URL ||
+  '';
+
+if (!databaseUrl) {
+  console.error('❌ Nenhuma URL do Neon Postgres encontrada no arquivo .env');
+  process.exit(1);
 }
 
-if (!process.env.POSTGRES_URL_NON_POOLING) {
-  process.env.POSTGRES_URL_NON_POOLING =
-    process.env.POSTGRES_PRISMA_URL ||
-    process.env.bd_church_PRISMA_DATABASE_URL ||
-    process.env.bd_church_POSTGRES_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.DATABASE_URL ||
-    '';
-}
-
-const prisma = new PrismaClient();
+const sql = neon(databaseUrl);
 
 const DEFAULT_TEXT_2026 = `IGREJA: Vargem Pequena 
 
@@ -408,7 +403,27 @@ function parseReportText(text: string) {
 }
 
 async function main() {
-  console.log('🌱 Populando Vercel Postgres com o histórico de cultos...');
+  console.log('🌱 Criando tabela e populando Neon Postgres (sem Prisma)...');
+
+  // Ajustar colunas para aceitar NULL em updatedAt se necessário
+  await sql`
+    CREATE TABLE IF NOT EXISTS services (
+      id VARCHAR(255) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      date VARCHAR(255) NOT NULL,
+      minister VARCHAR(255),
+      theme TEXT,
+      adults INT DEFAULT 0,
+      visitors INT DEFAULT 0,
+      kids INT DEFAULT 0,
+      total INT DEFAULT 0,
+      "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  // Remover restrição not-null de updatedAt caso exista
+  await sql`ALTER TABLE services ALTER COLUMN "updatedAt" DROP NOT NULL;`.catch(() => {});
 
   const allServices: Array<{
     name: string;
@@ -421,49 +436,36 @@ async function main() {
     total: number;
   }> = [];
 
-  // 1. Tentar ler parsed_reports.txt caso exista (histórico de 2025/2024 extraído)
   const parsedPath = path.join(process.cwd(), 'parsed_reports.txt');
   if (fs.existsSync(parsedPath)) {
     const text2025 = fs.readFileSync(parsedPath, 'utf-8');
     allServices.push(...parseReportText(text2025));
   }
 
-  // 2. Incluir texto padrão de 2026
   allServices.push(...parseReportText(DEFAULT_TEXT_2026));
 
-  // Deduplicar serviços por nome e data
   const uniqueMap = new Map<string, typeof allServices[0]>();
   for (const s of allServices) {
     uniqueMap.set(`${s.name}-${s.date}`, s);
   }
 
   const finalServices = Array.from(uniqueMap.values());
-
   let insertedCount = 0;
+
   for (const s of finalServices) {
-    await prisma.service.create({
-      data: {
-        name: s.name,
-        date: s.date,
-        minister: s.minister || null,
-        theme: s.theme || null,
-        adults: s.adults,
-        visitors: s.visitors,
-        kids: s.kids,
-        total: s.total
-      }
-    });
+    const id = Math.random().toString(36).substring(2, 11);
+    await sql`
+      INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
+      VALUES (${id}, ${s.name}, ${s.date}, ${s.minister || null}, ${s.theme || null}, ${s.adults}, ${s.visitors}, ${s.kids}, ${s.total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO NOTHING
+    `;
     insertedCount++;
   }
 
-  console.log(`✅ Sucesso! ${insertedCount} cultos históricos de 2024 a 2026 foram inseridos na tabela "services" do Vercel Postgres.`);
+  console.log(`✅ Sucesso! ${insertedCount} cultos históricos de 2024 a 2026 foram gravados no Neon Postgres via driver nativo (Sem Prisma).`);
 }
 
-main()
-  .catch(e => {
-    console.error('❌ Erro ao rodar seed do banco:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch(e => {
+  console.error('❌ Erro no seed:', e);
+  process.exit(1);
+});
