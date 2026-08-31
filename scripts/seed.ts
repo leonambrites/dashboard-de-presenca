@@ -21,7 +21,7 @@ if (!databaseUrl) {
 
 const sql = neon(databaseUrl);
 
-const DEFAULT_TEXT_2026 = `IGREJA: MNCS Vargem Pequena 
+const DEFAULT_TEXT_2026 = `IGREJA: Vargem Pequena 
 
 CULTO QUARTA - 11.02.2026
 Ministro: Obreiro Cristiano 

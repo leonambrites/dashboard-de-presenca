@@ -26,7 +26,7 @@ type ReportData = {
   services: ServiceData[];
 };
 
-const DEFAULT_TEXT = `IGREJA: MNCS Vargem Pequena 
+const DEFAULT_TEXT = `IGREJA: Vargem Pequena 
 
 CULTO QUARTA - 11.02.2026
 Ministro: Obreiro Cristiano 

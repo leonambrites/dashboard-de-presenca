@@ -41,7 +41,7 @@ const SERVICE_TYPES: { key: ServiceTypeKey; label: string; description: string; 
   }
 ];
 
-const SAMPLE_TEMPLATE = `IGREJA: MNCS Vargem Pequena
+const SAMPLE_TEMPLATE = `IGREJA: Vargem Pequena
 
 CULTO DOMINGO - 30.08.2026
 Ministro: Pr. Amilton
