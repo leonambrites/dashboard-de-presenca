@@ -104,6 +104,16 @@ router.get('/services', async (_req: Request, res: Response) => {
   }
 });
 
+// GET /services/bulk - Informativo para acesso via GET no navegador
+router.get('/services/bulk', (_req: Request, res: Response) => {
+  res.json({
+    status: 'online',
+    endpoint: '/api/services/bulk',
+    methodRequired: 'POST',
+    description: 'Este endpoint é utilizado pela aplicação para importar múltiplos relatórios em lote via requisições POST com payload JSON.'
+  });
+});
+
 // POST /services - Criar um novo culto
 router.post('/services', async (req: Request, res: Response) => {
   try {
