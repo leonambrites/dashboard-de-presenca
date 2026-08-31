@@ -1996,9 +1996,14 @@ export default function App() {
                           }}
                         />
                         <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                        <Bar dataKey="avgMembers" name="Membros Adultos" stackId="a" fill="#3b82f6" radius={[0, 0, 4, 4]} />
-                        <Bar dataKey="avgVisitors" name="Visitantes" stackId="a" fill="#10b981" />
+                        <Bar dataKey="avgMembers" name="Membros Adultos" stackId="a" fill="#3b82f6" radius={[0, 0, 4, 4]}>
+                          <LabelList dataKey="avgMembers" position="center" style={{ fontSize: 11, fontWeight: 700, fill: '#ffffff' }} formatter={(val: any) => Number(val) > 0 ? val : ''} />
+                        </Bar>
+                        <Bar dataKey="avgVisitors" name="Visitantes" stackId="a" fill="#10b981">
+                          <LabelList dataKey="avgVisitors" position="center" style={{ fontSize: 11, fontWeight: 700, fill: '#ffffff' }} formatter={(val: any) => Number(val) > 0 ? val : ''} />
+                        </Bar>
                         <Bar dataKey="avgKids" name="Crianças" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]}>
+                          <LabelList dataKey="avgKids" position="center" style={{ fontSize: 11, fontWeight: 700, fill: '#ffffff' }} formatter={(val: any) => Number(val) > 0 ? val : ''} />
                           <LabelList dataKey="avgTotal" position="top" style={{ fontSize: 11, fontWeight: 700, fill: '#1e293b' }} />
                         </Bar>
                       </BarChart>

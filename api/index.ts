@@ -131,7 +131,7 @@ router.post('/services', async (req: Request, res: Response) => {
     const adultsNum = Number(adults) || 0;
     const visitorsNum = Number(visitors) || 0;
     const kidsNum = Number(kids) || 0;
-    const total = adultsNum + visitorsNum + kidsNum;
+    const total = adultsNum + kidsNum;
     const id = Math.random().toString(36).substring(2, 11);
 
     const rows = await sql`
@@ -171,7 +171,7 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
         const adultsNum = Number(service.adults) || 0;
         const visitorsNum = Number(service.visitors) || 0;
         const kidsNum = Number(service.kids) || 0;
-        const total = adultsNum + visitorsNum + kidsNum;
+        const total = adultsNum + kidsNum;
         const id = service.id || Math.random().toString(36).substring(2, 11);
 
         const rows = await sql`
@@ -209,7 +209,7 @@ router.put('/services/:id', async (req: Request, res: Response) => {
     const adultsNum = Number(adults) || 0;
     const visitorsNum = Number(visitors) || 0;
     const kidsNum = Number(kids) || 0;
-    const total = adultsNum + visitorsNum + kidsNum;
+    const total = adultsNum + kidsNum;
 
     const rows = await sql`
       UPDATE services
