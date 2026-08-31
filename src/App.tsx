@@ -26,7 +26,7 @@ type ReportData = {
   services: ServiceData[];
 };
 
-const DEFAULT_TEXT = `IGREJA: Vargem Pequena 
+const DEFAULT_TEXT = `IGREJA: MNCS Vargem Pequena 
 
 CULTO QUARTA - 11.02.2026
 Ministro: Obreiro Cristiano 
@@ -565,13 +565,14 @@ function parseServiceDate(dateStr: string): Date {
 function parseReport(text: string): ReportData {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l);
   
-  let churchName = 'Não identificada';
+  let churchName = 'MNCS Vargem Pequena';
   const services: ServiceData[] = [];
   let currentService: Partial<ServiceData> | null = null;
 
   for (const line of lines) {
     if (line.toUpperCase().startsWith('IGREJA:')) {
-      churchName = line.substring(7).trim();
+      const raw = line.substring(7).trim();
+      churchName = raw === 'Vargem Pequena' ? 'MNCS Vargem Pequena' : raw;
       continue;
     }
 
