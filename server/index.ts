@@ -37,18 +37,18 @@ app.post('/api/init-db', async (_req: Request, res: Response) => {
 // GET /api/services - Buscar todos os cultos
 app.get('/api/services', async (_req: Request, res: Response) => {
   try {
-    if (process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL) {
-      const services = await prisma.service.findMany({
-        orderBy: { date: 'asc' }
-      });
-      return res.json(services);
-    }
-    // Tenta fallback com @vercel/postgres
-    const { rows } = await sql`SELECT * FROM services ORDER BY "createdAt" ASC`;
-    return res.json(rows);
+    const services = await prisma.service.findMany({
+      orderBy: { date: 'asc' }
+    });
+    return res.json(services);
   } catch (error: any) {
     console.error('Erro ao buscar cultos do Vercel Postgres:', error);
-    res.status(500).json({ error: 'Erro ao conectar ao banco de dados Vercel Postgres', details: error.message });
+    try {
+      const { rows } = await sql`SELECT * FROM services ORDER BY "createdAt" ASC`;
+      return res.json(rows);
+    } catch (sqlErr: any) {
+      res.status(500).json({ error: 'Erro ao conectar ao banco de dados Vercel Postgres', details: error.message });
+    }
   }
 });
 
