@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer
+  BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
 import { 
   Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Filter, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, Percent, CheckCircle2, Search
@@ -1734,7 +1734,9 @@ export default function App() {
                               dot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
                               activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2, fill: '#fff' }}
                               connectNulls
-                            />
+                            >
+                              <LabelList dataKey="avgDomingo" position="top" style={{ fontSize: 10, fontWeight: 700, fill: '#1e40af' }} />
+                            </Line>
                             <Line 
                               type="monotone" 
                               dataKey="avgQuarta" 
@@ -1744,7 +1746,9 @@ export default function App() {
                               dot={{ r: 4, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }}
                               activeDot={{ r: 6, stroke: '#8b5cf6', strokeWidth: 2, fill: '#fff' }}
                               connectNulls
-                            />
+                            >
+                              <LabelList dataKey="avgQuarta" position="top" style={{ fontSize: 10, fontWeight: 700, fill: '#6b21a8' }} />
+                            </Line>
                             <Line 
                               type="monotone" 
                               dataKey="avgPress" 
@@ -1754,7 +1758,9 @@ export default function App() {
                               dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }}
                               activeDot={{ r: 6, stroke: '#f59e0b', strokeWidth: 2, fill: '#fff' }}
                               connectNulls
-                            />
+                            >
+                              <LabelList dataKey="avgPress" position="top" style={{ fontSize: 10, fontWeight: 700, fill: '#b45309' }} />
+                            </Line>
                             <Line 
                               type="monotone" 
                               dataKey="avgTotal" 
@@ -1764,7 +1770,9 @@ export default function App() {
                               strokeDasharray="4 4"
                               dot={{ r: 3, fill: '#64748b' }}
                               activeDot={{ r: 5 }}
-                            />
+                            >
+                              <LabelList dataKey="avgTotal" position="top" style={{ fontSize: 10, fontWeight: 700, fill: '#475569' }} />
+                            </Line>
                           </LineChart>
                         ) : timelineMode === 'composition' ? (
                           <LineChart data={monthlyEvolution} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
@@ -1822,7 +1830,9 @@ export default function App() {
                               strokeWidth={3} 
                               dot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
                               activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2, fill: '#fff' }}
-                            />
+                            >
+                              <LabelList dataKey="avgAdults" position="top" style={{ fontSize: 11, fontWeight: 700, fill: '#1e40af' }} />
+                            </Line>
                             <Line 
                               type="monotone" 
                               dataKey="avgVisitors" 
@@ -1831,7 +1841,9 @@ export default function App() {
                               strokeWidth={2.5} 
                               dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }}
                               activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#fff' }}
-                            />
+                            >
+                              <LabelList dataKey="avgVisitors" position="bottom" style={{ fontSize: 10, fontWeight: 700, fill: '#047857' }} />
+                            </Line>
                             <Line 
                               type="monotone" 
                               dataKey="avgKids" 
@@ -1840,7 +1852,9 @@ export default function App() {
                               strokeWidth={2.5} 
                               dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }}
                               activeDot={{ r: 6, stroke: '#f59e0b', strokeWidth: 2, fill: '#fff' }}
-                            />
+                            >
+                              <LabelList dataKey="avgKids" position="top" style={{ fontSize: 11, fontWeight: 700, fill: '#b45309' }} />
+                            </Line>
                           </LineChart>
                         ) : (
                           <LineChart data={chronologicalServices} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
@@ -1984,7 +1998,9 @@ export default function App() {
                         <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                         <Bar dataKey="avgMembers" name="Membros Adultos" stackId="a" fill="#3b82f6" radius={[0, 0, 4, 4]} />
                         <Bar dataKey="avgVisitors" name="Visitantes" stackId="a" fill="#10b981" />
-                        <Bar dataKey="avgKids" name="Crianças" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="avgKids" name="Crianças" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]}>
+                          <LabelList dataKey="avgTotal" position="top" style={{ fontSize: 11, fontWeight: 700, fill: '#1e293b' }} />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
