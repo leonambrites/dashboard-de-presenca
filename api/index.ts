@@ -5,6 +5,8 @@ import { neon } from '@neondatabase/serverless';
 
 dotenv.config();
 
+const DEFAULT_NEON_URL = 'postgresql://neondb_owner:npg_zTKaut9D1RqB@ep-quiet-dust-aw3ylx9p-pooler.c-12.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+
 function getDatabaseUrl(): string {
   return (
     process.env.DATABASE_URL ||
@@ -13,15 +15,12 @@ function getDatabaseUrl(): string {
     process.env.DATABASE_URL_UNPOOLED ||
     process.env.bd_church_POSTGRES_URL ||
     process.env.bd_church_PRISMA_DATABASE_URL ||
-    ''
+    DEFAULT_NEON_URL
   );
 }
 
 function getNeonSql() {
   const url = getDatabaseUrl();
-  if (!url) {
-    throw new Error('Nenhuma URL do Neon Postgres (DATABASE_URL / POSTGRES_URL) foi configurada nas variáveis da Vercel.');
-  }
   return neon(url);
 }
 
