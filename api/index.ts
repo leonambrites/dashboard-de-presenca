@@ -80,7 +80,8 @@ router.post('/init-db', async (_req: Request, res: Response) => {
         "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `;
-    res.json({ success: true, message: 'Tabela services criada/verificada no Neon Postgres com sucesso!' });
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_services_name_date ON services (name, date);`;
+    res.json({ success: true, message: 'Tabela services e índice único verificados no Neon Postgres com sucesso!' });
   } catch (error: any) {
     console.error('Erro ao inicializar Neon Postgres:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -114,7 +115,7 @@ router.get('/services/bulk', (_req: Request, res: Response) => {
   });
 });
 
-// POST /services - Criar um novo culto
+// POST /services - Criar um novo culto (com upsert por nome e data)
 router.post('/services', async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
@@ -130,6 +131,14 @@ router.post('/services', async (req: Request, res: Response) => {
     const rows = await sql`
       INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
       VALUES (${id}, ${stdName}, ${date}, ${stdMinister}, ${theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (name, date) DO UPDATE SET
+        minister = EXCLUDED.minister,
+        theme = COALESCE(EXCLUDED.theme, services.theme),
+        adults = EXCLUDED.adults,
+        visitors = EXCLUDED.visitors,
+        kids = EXCLUDED.kids,
+        total = EXCLUDED.total,
+        "updatedAt" = CURRENT_TIMESTAMP
       RETURNING *
     `;
 
@@ -140,7 +149,7 @@ router.post('/services', async (req: Request, res: Response) => {
   }
 });
 
-// POST /services/bulk - Importação em lote para o Neon Postgres
+// POST /services/bulk - Importação em lote para o Neon Postgres (com upsert por nome e data)
 router.post('/services/bulk', async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
@@ -162,11 +171,9 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
       const rows = await sql`
         INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
         VALUES (${id}, ${stdName}, ${service.date}, ${stdMinister}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          date = EXCLUDED.date,
+        ON CONFLICT (name, date) DO UPDATE SET
           minister = EXCLUDED.minister,
-          theme = EXCLUDED.theme,
+          theme = COALESCE(EXCLUDED.theme, services.theme),
           adults = EXCLUDED.adults,
           visitors = EXCLUDED.visitors,
           kids = EXCLUDED.kids,
