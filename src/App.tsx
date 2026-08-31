@@ -1533,7 +1533,7 @@ export default function App() {
 
                   {/* Summary Metric Highlight Cards */}
                   {timelineStats && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
                       <div>
                         <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 block mb-0.5">
                           Mês Mais Forte (Domingo)
@@ -1560,6 +1560,36 @@ export default function App() {
 
                       <div>
                         <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 block mb-0.5">
+                          Média Adultos
+                        </span>
+                        <span className="text-sm font-bold text-blue-600 flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span>{kpis.avgAdults} <span className="text-xs font-semibold text-slate-500">/culto</span></span>
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 block mb-0.5">
+                          Média Visitantes
+                        </span>
+                        <span className="text-sm font-bold text-emerald-600 flex items-center gap-1.5">
+                          <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>{kpis.avgVisitors} <span className="text-xs font-semibold text-slate-500">/culto</span></span>
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 block mb-0.5">
+                          Média Crianças
+                        </span>
+                        <span className="text-sm font-bold text-amber-600 flex items-center gap-1.5">
+                          <Baby className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>{kpis.avgKids} <span className="text-xs font-semibold text-slate-500">/culto</span></span>
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 block mb-0.5">
                           Tendência no Domingo
                         </span>
                         <span className={`text-sm font-bold flex items-center gap-1.5 ${
@@ -1575,16 +1605,6 @@ export default function App() {
                               ? `${timelineStats.sundayGrowth > 0 ? '+' : ''}${timelineStats.sundayGrowth}% no período`
                               : '—'}
                           </span>
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 block mb-0.5">
-                          Total Acumulado
-                        </span>
-                        <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                          <Users className="w-4 h-4 text-slate-500 shrink-0" />
-                          <span>{timelineStats.totalOverallAttendance.toLocaleString('pt-BR')} <span className="text-xs font-semibold text-slate-500">presenças</span></span>
                         </span>
                       </div>
                     </div>
