@@ -1379,9 +1379,6 @@ export default function App() {
                     <span className="text-3xl font-bold text-slate-800">{kpis.avgTotal}</span>
                   </div>
                 </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                  <span>Total: <strong>{kpis.totalAttendance.toLocaleString('pt-BR')}</strong> em {kpis.numServices} cultos</span>
-                </div>
               </div>
 
               {/* Card 2: Taxa de Visitantes */}
@@ -1394,10 +1391,6 @@ export default function App() {
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-slate-800">{kpis.visitorRate}%</span>
                   </div>
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-700">{kpis.totalVisitors} visitantes</span>
-                  <p className="text-slate-400 mt-0.5">Média {kpis.avgVisitors}/culto ({kpis.visitorAdultShare}% dos adultos)</p>
                 </div>
               </div>
 
@@ -1417,18 +1410,6 @@ export default function App() {
                     )}
                   </div>
                 </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
-                  {kpis.peakService ? (
-                    <>
-                      <span className="font-semibold text-slate-700">{kpis.peakService.date}</span>
-                      <p className="text-slate-500 truncate mt-0.5" title={`${kpis.peakService.name} - ${kpis.peakService.minister}`}>
-                        {kpis.peakService.name}
-                      </p>
-                    </>
-                  ) : (
-                    <span>Nenhum dado</span>
-                  )}
-                </div>
               </div>
 
               {/* Card 4: Média Adultos */}
@@ -1442,13 +1423,6 @@ export default function App() {
                     <span className="text-3xl font-bold text-slate-800">{kpis.avgAdults}</span>
                   </div>
                 </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-700">{kpis.avgMembers} membros</span>
-                  <span className="text-slate-400"> + {Math.round(kpis.avgVisitors)} visit.</span>
-                  <p className="text-slate-400 mt-0.5">
-                    {kpis.totalAttendance > 0 ? Math.round((kpis.totalAdults / kpis.totalAttendance) * 100) : 0}% da congregação
-                  </p>
-                </div>
               </div>
 
               {/* Card 5: Média Crianças */}
@@ -1461,10 +1435,6 @@ export default function App() {
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-slate-800">{kpis.avgKids}</span>
                   </div>
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-700">{kpis.totalKids} crianças no total</span>
-                  <p className="text-slate-400 mt-0.5">{kpis.kidsRatio}% de participação</p>
                 </div>
               </div>
 
@@ -1481,14 +1451,6 @@ export default function App() {
                       / {accumulatedServices.length}
                     </span>
                   </div>
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
-                  <span className="font-semibold text-slate-700">
-                    {dateRange ? `${dateRange.oldest} - ${dateRange.newest}` : '—'}
-                  </span>
-                  <p className="text-slate-400 mt-0.5">
-                    {activeFiltersCount > 0 ? 'Filtro aplicado' : 'Histórico integral'}
-                  </p>
                 </div>
               </div>
             </div>
