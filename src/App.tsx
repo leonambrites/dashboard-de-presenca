@@ -1368,7 +1368,7 @@ export default function App() {
 
             {/* Advanced KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-              {/* Card 1: Média Geral + Deltas */}
+              {/* Card 1: Média Geral */}
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -1377,23 +1377,10 @@ export default function App() {
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-slate-800">{kpis.avgTotal}</span>
-                    {kpis.deltaPercent !== null && (
-                      <span className={`inline-flex items-center text-xs font-bold ${
-                        kpis.deltaPercent >= 0 ? 'text-emerald-600' : 'text-rose-600'
-                      }`}>
-                        {kpis.deltaPercent >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                        {kpis.deltaPercent > 0 ? `+${kpis.deltaPercent}%` : `${kpis.deltaPercent}%`}
-                      </span>
-                    )}
                   </div>
                 </div>
                 <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
                   <span>Total: <strong>{kpis.totalAttendance.toLocaleString('pt-BR')}</strong> em {kpis.numServices} cultos</span>
-                  {kpis.deltaVsOverall !== null && (
-                    <p className={`font-semibold mt-0.5 ${kpis.deltaVsOverall >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {kpis.deltaVsOverall >= 0 ? `+${kpis.deltaVsOverall}%` : `${kpis.deltaVsOverall}%`} vs média geral
-                    </p>
-                  )}
                 </div>
               </div>
 
