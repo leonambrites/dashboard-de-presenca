@@ -1,30 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { 
-  Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Filter, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, Percent, CheckCircle2, Search, Sparkles
+  Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, CheckCircle2, Sparkles
 } from 'lucide-react';
 import { ReportInputModal } from './components/ReportInputModal';
 import { ServicesTable } from './components/ServicesTable';
 import { api } from './lib/api';
-
-type ServiceData = {
-  id: string;
-  name: string;
-  date: string;
-  minister: string;
-  theme?: string;
-  adults: number;
-  visitors: number;
-  kids: number;
-  total: number;
-};
-
-type ReportData = {
-  churchName: string;
-  services: ServiceData[];
-};
+import { ServiceData, ReportData } from './types';
 
 const DEFAULT_TEXT = `IGREJA: Vargem Pequena 
 
@@ -639,13 +623,9 @@ function parseReport(text: string): ReportData {
   return { churchName, services: uniqueServices };
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
 export default function App() {
-  const initialData = useMemo(() => parseReport(DEFAULT_TEXT), []);
-  
-  const [accumulatedServices, setAccumulatedServices] = useState<ServiceData[]>(initialData.services);
-  const [churchName, setChurchName] = useState(initialData.churchName);
+  const [accumulatedServices, setAccumulatedServices] = useState<ServiceData[]>([]);
+  const [churchName, setChurchName] = useState<string>('MNCS Vargem Pequena');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMinister, setSelectedMinister] = useState<string>('');
   const [selectedServiceType, setSelectedServiceType] = useState<string>('');
@@ -689,16 +669,13 @@ export default function App() {
         const dbServices = await api.getServices();
         if (dbServices && dbServices.length > 0) {
           setAccumulatedServices(dbServices);
-        } else {
-          setAccumulatedServices(initialData.services);
         }
       } catch (err) {
         console.warn('Banco Neon Postgres indisponível localmente. Operando com histórico local.', err);
-        setAccumulatedServices(initialData.services);
       }
     }
     loadServices();
-  }, [initialData.services]);
+  }, []);
 
   const handleSubmitReport = async (text: string) => {
     if (!text.trim()) return;
