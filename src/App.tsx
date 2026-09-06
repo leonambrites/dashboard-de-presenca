@@ -871,13 +871,13 @@ export default function App() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-slate-800">Último Culto de Adultos</h3>
+                        <h3 className="text-base font-bold text-slate-800">Último culto</h3>
                         <span className="bg-blue-50 text-blue-700 text-[11px] px-2.5 py-0.5 rounded-full font-semibold border border-blue-100">
                           Mais Recente
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Presença de adultos e indicadores do culto realizado em {latestServicesInfo.latestOverall.date}
+                        Presença e indicadores do culto realizado em {latestServicesInfo.latestOverall.date}
                       </p>
                     </div>
                   </div>
