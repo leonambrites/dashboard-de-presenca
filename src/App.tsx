@@ -3,7 +3,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
 import { 
-  Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, CheckCircle2, Sparkles
+  Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, CheckCircle2, Sparkles, BookOpen, User, MessageSquare
 } from 'lucide-react';
 import { ReportInputModal } from './components/ReportInputModal';
 import { ServicesTable } from './components/ServicesTable';
@@ -881,104 +881,124 @@ export default function App() {
                       </p>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-3.5 py-1.5 rounded-xl self-start sm:self-auto">
-                    <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span className="text-xs font-semibold text-slate-700">
-                      {latestServicesInfo.latestOverall.name} • {latestServicesInfo.latestOverall.date}
-                    </span>
-                  </div>
                 </div>
 
-                {/* Grid principal do último culto */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                  
-                  {/* Card 1: Destaque de Adultos no Último Culto com info pequena de visitantes e crianças */}
-                  <div className="lg:col-span-6 bg-slate-50/60 border border-slate-200/60 rounded-2xl p-5 flex flex-col justify-between hover:border-blue-200 transition-all shadow-xs">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4 text-blue-600" />
-                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                            Adultos Presentes
-                          </span>
-                        </div>
-                        <span className="text-xs text-blue-700 font-semibold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                {/* Card Único Mesclado: Informações do Último Culto */}
+                <div className="bg-slate-50/60 border border-slate-200/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-5">
+                  {/* Linha Superior: Adultos (Esquerda) e Dados da Ministração (Direita) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    
+                    {/* Bloco Esquerda: Tipo do Culto e Adultos Presentes */}
+                    <div className="lg:col-span-5 flex flex-col justify-between">
+                      <div className="mb-3">
+                        <span className="text-xs text-blue-700 font-semibold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 inline-block">
                           {latestServicesInfo.latestOverall.name}
                         </span>
                       </div>
 
-                      {/* Número Principal de Adultos */}
-                      <div className="flex items-baseline gap-3 my-2">
-                        <span className="text-4xl font-extrabold text-slate-800 tracking-tight">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          Adultos Presentes
+                        </span>
+                      </div>
+
+                      <div className="flex items-baseline gap-3 my-1">
+                        <span className="text-5xl font-extrabold text-slate-800 tracking-tight">
                           {latestServicesInfo.latestOverall.adults}
                         </span>
                         <span className="text-xs font-semibold text-slate-500">adultos no último culto</span>
                       </div>
                     </div>
 
-                    {/* Info pequena de quantidade de visitantes e crianças */}
-                    <div className="mt-4 pt-4 border-t border-slate-200/60 flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-slate-400 font-medium mr-1">Detalhamento:</span>
-                      
-                      {/* Info Pequena: Visitantes */}
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold">
-                        <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{latestServicesInfo.latestOverall.visitors} visitantes</span>
+                    {/* Bloco Direita: Dados da Ministração */}
+                    <div className="lg:col-span-7 lg:border-l lg:border-slate-200/60 lg:pl-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-slate-400" />
+                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            Dados da Ministração
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{latestServicesInfo.latestOverall.date}</span>
+                        </div>
                       </div>
 
-                      {/* Info Pequena: Crianças */}
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold">
-                        <Baby className="w-3.5 h-3.5 text-amber-600" />
-                        <span>{latestServicesInfo.latestOverall.kids} crianças</span>
-                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                        {/* Ministro Pregador */}
+                        <div className="flex items-start gap-2">
+                          <User className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="text-xs text-slate-400 font-medium block">Ministro Pregador:</span>
+                            <p className="text-base font-bold text-slate-800 mt-0.5">
+                              {latestServicesInfo.latestOverall.minister || 'Não informado'}
+                            </p>
+                          </div>
+                        </div>
 
-                      {/* Info: Total */}
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-slate-700 border border-slate-200 text-xs font-semibold ml-auto shadow-2xs">
-                        <span>Total: <strong className="text-slate-900 font-bold">{latestServicesInfo.latestOverall.total}</strong></span>
+                        {/* Tema da Palavra */}
+                        <div className="flex items-start gap-2">
+                          <MessageSquare className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="text-xs text-slate-400 font-medium block">Tema da Palavra:</span>
+                            {latestServicesInfo.latestOverall.theme ? (
+                              <p className="text-sm font-semibold text-purple-700 bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-xl mt-1 inline-block">
+                                "{latestServicesInfo.latestOverall.theme}"
+                              </p>
+                            ) : (
+                              <p className="text-sm font-medium text-slate-400 italic mt-0.5">Sem tema cadastrado</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card 2: Informações Pastorais / Pregação do Último Culto */}
-                  <div className="lg:col-span-6 bg-slate-50/60 border border-slate-200/60 rounded-2xl p-5 flex flex-col justify-between hover:border-purple-200 transition-all shadow-xs">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                          Dados da Ministração
-                        </span>
-                        <span className="text-xs text-slate-400 font-medium">
-                          {latestServicesInfo.latestOverall.date}
-                        </span>
-                      </div>
-
-                      <div className="space-y-3 my-1">
-                        <div>
-                          <span className="text-xs text-slate-400 block font-medium">Ministro Pregador:</span>
-                          <p className="text-base font-bold text-slate-800 mt-0.5">
-                            {latestServicesInfo.latestOverall.minister || 'Não informado'}
-                          </p>
+                  {/* Linha Inferior: Detalhamento (Esquerda) e Proporções (Direita) */}
+                  <div className="border-t border-slate-200/60 pt-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    
+                    {/* Detalhamento */}
+                    <div className="lg:col-span-6 space-y-2">
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                        Detalhamento
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Visitantes */}
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold">
+                          <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>{latestServicesInfo.latestOverall.visitors} visitantes</span>
                         </div>
 
-                        {latestServicesInfo.latestOverall.theme ? (
-                          <div>
-                            <span className="text-xs text-slate-400 block font-medium">Tema da Palavra:</span>
-                            <p className="text-sm font-semibold text-purple-700 bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-xl mt-1 inline-block">
-                              "{latestServicesInfo.latestOverall.theme}"
-                            </p>
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="text-xs text-slate-400 block font-medium">Tema:</span>
-                            <p className="text-sm font-medium text-slate-400 italic mt-0.5">Sem tema cadastrado</p>
-                          </div>
-                        )}
+                        {/* Crianças */}
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold">
+                          <Baby className="w-3.5 h-3.5 text-amber-600" />
+                          <span>{latestServicesInfo.latestOverall.kids} crianças</span>
+                        </div>
+
+                        {/* Total */}
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-slate-700 border border-slate-200 text-xs font-semibold shadow-2xs">
+                          <span>Total: <strong className="text-slate-900 font-bold">{latestServicesInfo.latestOverall.total}</strong></span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
-                      <span>Proporção Crianças: <strong className="text-amber-700 font-bold">{latestServicesInfo.latestOverall.total > 0 ? Math.round((latestServicesInfo.latestOverall.kids / latestServicesInfo.latestOverall.total) * 100) : 0}%</strong></span>
-                      <span>Visitantes / Adultos: <strong className="text-emerald-700 font-bold">{latestServicesInfo.latestOverall.adults > 0 ? ((latestServicesInfo.latestOverall.visitors / latestServicesInfo.latestOverall.adults) * 100).toFixed(1) : '0.0'}%</strong></span>
+                    {/* Proporções */}
+                    <div className="lg:col-span-6 lg:border-l lg:border-slate-200/60 lg:pl-6 space-y-2">
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                        Proporções
+                      </span>
+                      <div className="flex flex-wrap items-center gap-6 text-xs text-slate-600">
+                        <div className="flex items-center gap-1.5">
+                          <Baby className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span>Proporção Crianças: <strong className="text-amber-700 font-bold">{latestServicesInfo.latestOverall.total > 0 ? Math.round((latestServicesInfo.latestOverall.kids / latestServicesInfo.latestOverall.total) * 100) : 0}%</strong></span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span>Visitantes / Adultos: <strong className="text-emerald-700 font-bold">{latestServicesInfo.latestOverall.adults > 0 ? ((latestServicesInfo.latestOverall.visitors / latestServicesInfo.latestOverall.adults) * 100).toFixed(1) : '0.0'}%</strong></span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
