@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, Plus, FileText, CheckCircle2, AlertCircle, Sparkles, Trash2, 
   HelpCircle, ChevronDown, ChevronUp, Church, Users, UserPlus, Baby,
-  Calendar, Sun, BookOpen, Zap, Check, ArrowRight
+  Calendar, Sun, BookOpen, Zap, Check, ArrowRight, Clock, Edit3
 } from 'lucide-react';
 import { ReportData, ServiceData } from '../types';
 
@@ -11,6 +11,9 @@ interface ReportInputModalProps {
   onClose: () => void;
   onSubmitText: (text: string) => void;
   onAddSingleService: (service: ServiceData) => void;
+  onUpdateService?: (id: string, service: Partial<ServiceData>) => void;
+  serviceToEdit?: ServiceData | null;
+  existingServices?: ServiceData[];
   parseReport: (text: string) => ReportData;
   ministerOptions?: { name: string; count: number }[];
 }
@@ -73,6 +76,18 @@ function getTodayFormatted(): { yyyyMmDd: string; ddMmYyyy: string } {
   };
 }
 
+function convertDateToIso(dateStr?: string): string {
+  if (!dateStr) return getTodayFormatted().yyyyMmDd;
+  const normalized = dateStr.replace(/[\/\-]/g, '.');
+  const parts = normalized.split('.');
+  if (parts.length === 3) {
+    let year = parts[2];
+    if (year.length === 2) year = '20' + year;
+    return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+  }
+  return dateStr;
+}
+
 function toTitleCase(str: string) {
   return str
     .toLowerCase()
@@ -86,9 +101,13 @@ export function ReportInputModal({
   onClose,
   onSubmitText,
   onAddSingleService,
+  onUpdateService,
+  serviceToEdit,
+  existingServices = [],
   parseReport,
   ministerOptions = []
 }: ReportInputModalProps) {
+  const isEditing = Boolean(serviceToEdit);
   const [activeTab, setActiveTab] = useState<'single' | 'text'>('single');
 
   // Single service state
@@ -101,6 +120,7 @@ export function ReportInputModal({
   const [adultsInput, setAdultsInput] = useState<string>('');
   const [kidsInput, setKidsInput] = useState<string>('');
   const [visitorsInput, setVisitorsInput] = useState<string>('');
+  const [visitorsPending, setVisitorsPending] = useState(false);
   
   // Touched state for immediate visual validation feedback
   const [touchedAdults, setTouchedAdults] = useState(false);
@@ -109,6 +129,34 @@ export function ReportInputModal({
   // Bulk text state
   const [inputText, setInputText] = useState('');
   const [showFormatGuide, setShowFormatGuide] = useState(false);
+
+  // Sync state with serviceToEdit when opened or changed
+  useEffect(() => {
+    if (serviceToEdit) {
+      setActiveTab('single');
+      setSelectedType((serviceToEdit.name as ServiceTypeKey) || 'CULTO DOMINGO');
+      setDateInput(convertDateToIso(serviceToEdit.date));
+      setMinisterInput(serviceToEdit.minister || '');
+      setThemeInput(serviceToEdit.theme || '');
+      setAdultsInput(serviceToEdit.adults !== undefined ? String(serviceToEdit.adults) : '');
+      setKidsInput(serviceToEdit.kids !== undefined ? String(serviceToEdit.kids) : '');
+      setVisitorsPending(Boolean(serviceToEdit.visitorsPending));
+      setVisitorsInput(serviceToEdit.visitorsPending ? '' : (serviceToEdit.visitors !== undefined ? String(serviceToEdit.visitors) : ''));
+      setTouchedAdults(true);
+      setTouchedKids(true);
+    } else {
+      setSelectedType('CULTO DOMINGO');
+      setDateInput(getTodayFormatted().yyyyMmDd);
+      setMinisterInput('');
+      setThemeInput('');
+      setAdultsInput('');
+      setKidsInput('');
+      setVisitorsInput('');
+      setVisitorsPending(false);
+      setTouchedAdults(false);
+      setTouchedKids(false);
+    }
+  }, [serviceToEdit, isOpen]);
 
   // Close on Escape key
   useEffect(() => {
@@ -131,21 +179,36 @@ export function ReportInputModal({
     return dateInput;
   }, [dateInput]);
 
+  // Check if a service already exists in the same date/type (in add mode)
+  const matchingExistingService = useMemo(() => {
+    if (isEditing || !existingServices || existingServices.length === 0) return null;
+    return existingServices.find(s => s.name === selectedType && s.date === formattedDateStr);
+  }, [isEditing, existingServices, selectedType, formattedDateStr]);
+
+  const loadExistingServiceData = (srv: ServiceData) => {
+    if (srv.minister) setMinisterInput(srv.minister);
+    if (srv.theme) setThemeInput(srv.theme);
+    if (srv.adults !== undefined) setAdultsInput(String(srv.adults));
+    if (srv.kids !== undefined) setKidsInput(String(srv.kids));
+    setVisitorsPending(Boolean(srv.visitorsPending));
+    setVisitorsInput(srv.visitorsPending ? '' : String(srv.visitors));
+  };
+
   // Validation for single service
   const adultsNum = adultsInput.trim() === '' ? NaN : parseInt(adultsInput, 10);
-  const kidsNum = kidsInput.trim() === '' ? NaN : parseInt(kidsInput, 10);
+  const kidsNum = kidsInput.trim() === '' ? 0 : parseInt(kidsInput, 10);
   const visitorsNum = visitorsInput.trim() === '' ? 0 : parseInt(visitorsInput, 10);
 
   const isAdultsValid = !isNaN(adultsNum) && adultsNum >= 0;
-  const isKidsValid = !isNaN(kidsNum) && kidsNum >= 0;
-  const isVisitorsValid = visitorsInput.trim() === '' || (!isNaN(visitorsNum) && visitorsNum >= 0);
+  const isKidsValid = kidsInput.trim() === '' || (!isNaN(kidsNum) && kidsNum >= 0);
+  const isVisitorsValid = visitorsPending || visitorsInput.trim() === '' || (!isNaN(visitorsNum) && visitorsNum >= 0);
   const isDateValid = !!dateInput.trim();
 
   const isSingleFormValid = isAdultsValid && isKidsValid && isVisitorsValid && isDateValid;
 
   // Real-time calculation summary
   const totalCalculated = (isAdultsValid ? adultsNum : 0) + (isKidsValid ? kidsNum : 0);
-  const membersCalculated = isAdultsValid ? Math.max(0, adultsNum - (isVisitorsValid ? visitorsNum : 0)) : 0;
+  const membersCalculated = isAdultsValid ? Math.max(0, adultsNum - (!visitorsPending && isVisitorsValid ? visitorsNum : 0)) : 0;
 
   // Bulk text preview
   const liveParsed = useMemo(() => {
@@ -164,6 +227,22 @@ export function ReportInputModal({
 
     if (!isSingleFormValid) return;
 
+    if (isEditing && serviceToEdit && onUpdateService) {
+      onUpdateService(serviceToEdit.id, {
+        name: selectedType,
+        date: formattedDateStr,
+        minister: ministerInput.trim() ? toTitleCase(ministerInput.trim()) : '',
+        theme: themeInput.trim() || undefined,
+        adults: adultsNum,
+        kids: kidsNum,
+        visitors: visitorsPending ? 0 : (isVisitorsValid ? visitorsNum : 0),
+        visitorsPending: visitorsPending,
+        total: adultsNum + kidsNum
+      });
+      onClose();
+      return;
+    }
+
     const newService: ServiceData = {
       id: Math.random().toString(36).substring(7),
       name: selectedType,
@@ -172,7 +251,8 @@ export function ReportInputModal({
       theme: themeInput.trim() || undefined,
       adults: adultsNum,
       kids: kidsNum,
-      visitors: isVisitorsValid ? visitorsNum : 0,
+      visitors: visitorsPending ? 0 : (isVisitorsValid ? visitorsNum : 0),
+      visitorsPending: visitorsPending,
       total: adultsNum + kidsNum
     };
 
@@ -182,6 +262,7 @@ export function ReportInputModal({
     setAdultsInput('');
     setKidsInput('');
     setVisitorsInput('');
+    setVisitorsPending(false);
     setThemeInput('');
     setTouchedAdults(false);
     setTouchedKids(false);
@@ -211,15 +292,17 @@ export function ReportInputModal({
         <div className="p-5 sm:p-6 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/70">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                <Plus className="w-4 h-4" />
+              <div className={`w-8 h-8 rounded-xl ${isEditing ? 'bg-amber-600' : 'bg-blue-600'} text-white flex items-center justify-center shadow-xs`}>
+                {isEditing ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
               </div>
               <h2 className="text-lg sm:text-xl font-bold text-slate-900">
-                Adicionar Dados ao Relatório
+                {isEditing ? 'Editar Dados do Culto' : 'Adicionar Dados ao Relatório'}
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Registre um novo culto individual ou importe um relatório pastoral completo
+              {isEditing 
+                ? 'Atualize os participantes, ministração ou adicione a contagem de visitantes deste culto' 
+                : 'Registre um novo culto individual ou importe um relatório pastoral completo'}
             </p>
           </div>
 
@@ -232,40 +315,68 @@ export function ReportInputModal({
           </button>
         </div>
 
-        {/* Mode Selector Tabs */}
-        <div className="flex border-b border-slate-100 bg-slate-50/40 px-6 pt-3 gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('single')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'single'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Culto Individual (Formulário)</span>
-          </button>
+        {/* Mode Selector Tabs (only shown when creating a new report) */}
+        {!isEditing && (
+          <div className="flex border-b border-slate-100 bg-slate-50/40 px-6 pt-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('single')}
+              className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'single'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Culto Individual (Formulário)</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('text')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'text'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Colar Relatório em Texto</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('text')}
+              className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'text'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Colar Relatório em Texto</span>
+            </button>
+          </div>
+        )}
 
         {/* Tab 1: Single Service Form */}
         {activeTab === 'single' ? (
           <form onSubmit={handleSingleSubmit} className="flex flex-col flex-1 overflow-hidden">
             <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
               
+              {/* Existing Service Detection Banner (Add mode) */}
+              {matchingExistingService && (
+                <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 animate-in fade-in">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold block text-amber-950">
+                        Já existe um registro para {selectedType} nesta data ({formattedDateStr})
+                      </span>
+                      <span className="text-[11px] text-amber-800 mt-0.5 block">
+                        Cadastrado com {matchingExistingService.adults} adultos, {matchingExistingService.kids} crianças
+                        {matchingExistingService.visitorsPending ? ' (visitantes pendentes)' : ` e ${matchingExistingService.visitors} visitantes`}.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => loadExistingServiceData(matchingExistingService)}
+                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg shrink-0 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Carregar dados para complementar
+                  </button>
+                </div>
+              )}
+
               {/* 1. Service Type Selection */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
@@ -373,11 +484,16 @@ export function ReportInputModal({
                 />
               </div>
 
-              {/* 3. Quantidades: Adultos (obrigatório), Crianças (obrigatório), Visitantes (opcional) */}
+              {/* 3. Quantidades: Adultos (obrigatório), Crianças (flexível), Visitantes (com opção de pendente) */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  Quantidades de Participantes
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Quantidades de Participantes
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    Preencha o que tiver em mãos agora
+                  </span>
+                </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {/* Adultos: número e não pode ser vazio */}
@@ -420,7 +536,7 @@ export function ReportInputModal({
                     )}
                   </div>
 
-                  {/* Crianças: número e não pode ser vazio */}
+                  {/* Crianças: número flexível (padrão 0) */}
                   <div className={`p-4 rounded-xl border transition-all ${
                     touchedKids && !isKidsValid
                       ? 'bg-rose-50/50 border-rose-300 ring-2 ring-rose-200'
@@ -431,16 +547,15 @@ export function ReportInputModal({
                         <Baby className="w-3.5 h-3.5 text-amber-600" />
                         Crianças
                       </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
-                        Obrigatório
+                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/60 px-1.5 py-0.5 rounded">
+                        Padrão 0
                       </span>
                     </div>
                     <input
                       type="number"
                       min="0"
                       step="1"
-                      required
-                      placeholder="0"
+                      placeholder="0 (vazio = 0)"
                       value={kidsInput}
                       onChange={(e) => {
                         setKidsInput(e.target.value);
@@ -449,41 +564,78 @@ export function ReportInputModal({
                       onBlur={() => setTouchedKids(true)}
                       className="w-full text-lg font-bold text-slate-900 bg-transparent outline-none placeholder-slate-300"
                     />
-                    {touchedKids && !isKidsValid ? (
-                      <p className="text-[11px] text-rose-600 mt-1 font-medium">
-                        Informe o número de crianças (obrigatório)
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Ministério Infantil / Kids
-                      </p>
-                    )}
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Ministério Infantil / Kids
+                    </p>
                   </div>
 
-                  {/* Visitantes: número e pode ser vazio */}
-                  <div className="p-4 rounded-xl border bg-slate-50/80 border-slate-200 focus-within:bg-white focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                  {/* Visitantes: número ou pendente */}
+                  <div className={`p-4 rounded-xl border transition-all ${
+                    visitorsPending 
+                      ? 'bg-amber-50/60 border-amber-300/80'
+                      : 'bg-slate-50/80 border-slate-200 focus-within:bg-white focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100'
+                  }`}>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
                         Visitantes
                       </span>
-                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/60 px-1.5 py-0.5 rounded">
-                        Pode ser vazio
-                      </span>
+                      {visitorsPending ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5" />
+                          Pendente
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/60 px-1.5 py-0.5 rounded">
+                          Pode ser vazio
+                        </span>
+                      )}
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="0 (vazio = 0)"
-                      value={visitorsInput}
-                      onChange={(e) => setVisitorsInput(e.target.value)}
-                      className="w-full text-lg font-bold text-slate-900 bg-transparent outline-none placeholder-slate-300"
-                    />
+                    {visitorsPending ? (
+                      <div className="py-1 text-xs font-semibold text-amber-800 italic">
+                        Contagem a definir depois
+                      </div>
+                    ) : (
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="0 (vazio = 0)"
+                        value={visitorsInput}
+                        onChange={(e) => setVisitorsInput(e.target.value)}
+                        className="w-full text-lg font-bold text-slate-900 bg-transparent outline-none placeholder-slate-300"
+                      />
+                    )}
                     <p className="text-[11px] text-slate-400 mt-1">
-                      {visitorsInput.trim() === '' ? 'Opcional (será 0)' : `${visitorsNum} visitantes`}
+                      {visitorsPending 
+                        ? 'Será adicionado posteriormente' 
+                        : (visitorsInput.trim() === '' ? 'Opcional (será 0)' : `${visitorsNum} visitantes`)}
                     </p>
                   </div>
+                </div>
+
+                {/* Opção de Contagem Gradual: Adicionar Visitantes Depois */}
+                <div className="mt-3 p-3.5 bg-amber-50/80 border border-amber-200/70 rounded-xl flex items-start gap-3 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="visitorsPendingToggle"
+                    checked={visitorsPending}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setVisitorsPending(checked);
+                      if (checked) setVisitorsInput('');
+                    }}
+                    className="mt-0.5 w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500 cursor-pointer accent-amber-600"
+                  />
+                  <label htmlFor="visitorsPendingToggle" className="cursor-pointer select-none flex-1">
+                    <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      A contagem dos visitantes acontece depois (aguardando recepção / acolhimento)
+                    </span>
+                    <span className="text-[11px] text-amber-800/90 block mt-0.5 leading-relaxed">
+                      Marque esta opção para salvar os números de adultos e crianças agora. O culto ficará sinalizado com badge de pendente no dashboard para você informar os visitantes com apenas 1 clique assim que a contagem terminar.
+                    </span>
+                  </label>
                 </div>
               </div>
 
@@ -503,7 +655,12 @@ export function ReportInputModal({
                       Membros: <strong className="text-slate-900">{membersCalculated}</strong>
                     </div>
                     <div className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-2xs">
-                      Visitantes: <strong className="text-emerald-700">{isVisitorsValid ? visitorsNum : 0}</strong>
+                      Visitantes:{' '}
+                      {visitorsPending ? (
+                        <strong className="text-amber-700 font-bold">Aguardando contagem</strong>
+                      ) : (
+                        <strong className="text-emerald-700 font-bold">{isVisitorsValid ? visitorsNum : 0}</strong>
+                      )}
                     </div>
                   </div>
                 )}
@@ -524,10 +681,21 @@ export function ReportInputModal({
               <button
                 type="submit"
                 disabled={!isSingleFormValid}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm py-2.5 px-6 rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                className={`${
+                  isEditing ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'
+                } disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm py-2.5 px-6 rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer`}
               >
-                <Plus className="w-4 h-4" />
-                Adicionar Culto ao Relatório
+                {isEditing ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Salvar Alterações
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Adicionar Culto ao Relatório
+                  </>
+                )}
               </button>
             </div>
           </form>

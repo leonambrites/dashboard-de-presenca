@@ -8,6 +8,7 @@ export interface ServiceData {
   visitors: number;
   kids: number;
   total: number;
+  visitorsPending?: boolean;
 }
 
 export interface ReportData {

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Search, X, Download, Filter, ArrowUpDown, ArrowUp, ArrowDown, 
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, BookOpen, Calendar, User
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, BookOpen, Calendar, User,
+  Clock, Edit2, UserPlus, Trash2, Plus
 } from 'lucide-react';
 import { ServiceData, SortField, SortDirection } from '../types';
 
@@ -18,6 +19,9 @@ interface ServicesTableProps {
   activeFiltersCount: number;
   handleResetFilters: () => void;
   parseServiceDate: (dateStr: string) => Date;
+  onEditService?: (service: ServiceData) => void;
+  onQuickEditVisitors?: (service: ServiceData) => void;
+  onDeleteService?: (id: string, name: string, date: string) => void;
 }
 
 function normalizeString(str: string): string {
@@ -39,7 +43,10 @@ export function ServicesTable({
   serviceTypeOptions,
   activeFiltersCount,
   handleResetFilters,
-  parseServiceDate
+  parseServiceDate,
+  onEditService,
+  onQuickEditVisitors,
+  onDeleteService
 }: ServicesTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyWithTheme, setOnlyWithTheme] = useState(false);
@@ -367,13 +374,17 @@ export function ServicesTable({
                   {renderSortIndicator('total')}
                 </div>
               </th>
+
+              <th className="px-6 py-4 font-semibold text-center whitespace-nowrap">
+                <span>Ações</span>
+              </th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-slate-100">
             {paginatedServices.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
                   <div className="max-w-sm mx-auto flex flex-col items-center">
                     <Search className="w-8 h-8 text-slate-300 mb-2" />
                     <p className="font-semibold text-slate-700 text-base">Nenhum culto encontrado</p>
@@ -387,7 +398,7 @@ export function ServicesTable({
                           setOnlyWithTheme(false);
                           handleResetFilters();
                         }}
-                        className="mt-4 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors"
+                        className="mt-4 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors cursor-pointer"
                       >
                         Limpar pesquisa e filtros
                       </button>
@@ -443,13 +454,50 @@ export function ServicesTable({
                   </td>
 
                   {/* Visitantes */}
-                  <td className="px-6 py-4 text-right font-medium text-emerald-700 whitespace-nowrap">
-                    {service.visitors > 0 ? (
-                      <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-xs font-semibold">
-                        +{service.visitors}
-                      </span>
+                  <td className="px-6 py-4 text-right whitespace-nowrap">
+                    {service.visitorsPending ? (
+                      <button
+                        type="button"
+                        onClick={() => onQuickEditVisitors && onQuickEditVisitors(service)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 text-xs font-bold transition-all shadow-2xs cursor-pointer group/btn"
+                        title="Contagem pendente! Clique para adicionar a quantidade de visitantes deste culto"
+                      >
+                        <Clock className="w-3 h-3 text-amber-600 animate-pulse shrink-0" />
+                        <span>Pendente</span>
+                        <span className="text-[10px] bg-amber-200/80 text-amber-900 px-1 py-0.5 rounded font-semibold group-hover/btn:bg-amber-600 group-hover/btn:text-white transition-colors">
+                          + Informar
+                        </span>
+                      </button>
+                    ) : service.visitors > 0 ? (
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-xs font-semibold">
+                          +{service.visitors}
+                        </span>
+                        {onQuickEditVisitors && (
+                          <button
+                            type="button"
+                            onClick={() => onQuickEditVisitors(service)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-all cursor-pointer"
+                            title="Editar quantidade de visitantes"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-slate-400 text-xs">0</span>
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="text-slate-400 text-xs">0</span>
+                        {onQuickEditVisitors && (
+                          <button
+                            type="button"
+                            onClick={() => onQuickEditVisitors(service)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-all cursor-pointer"
+                            title="Adicionar visitantes a este culto"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
 
@@ -469,6 +517,42 @@ export function ServicesTable({
                     <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg">
                       {service.total}
                     </span>
+                  </td>
+
+                  {/* Ações */}
+                  <td className="px-6 py-4 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1">
+                      {onQuickEditVisitors && (
+                        <button
+                          type="button"
+                          onClick={() => onQuickEditVisitors(service)}
+                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          title={service.visitorsPending ? "Informar Visitantes Pendentes" : "Atualizar Contagem de Visitantes"}
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {onEditService && (
+                        <button
+                          type="button"
+                          onClick={() => onEditService(service)}
+                          className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          title="Editar Culto Completo"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {onDeleteService && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteService(service.id, service.name, service.date)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Excluir Culto"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

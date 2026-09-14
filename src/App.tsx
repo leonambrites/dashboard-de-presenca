@@ -3,7 +3,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
 import { 
-  Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, CheckCircle2, Sparkles, BookOpen, User, MessageSquare, ChevronRight
+  Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, CheckCircle2, Sparkles, BookOpen, User, MessageSquare, ChevronRight, Edit2, Edit3
 } from 'lucide-react';
 import { ReportInputModal } from './components/ReportInputModal';
 import { ServicesTable } from './components/ServicesTable';
@@ -116,17 +116,61 @@ function parseReport(text: string): ReportData {
   return { churchName, services: uniqueServices };
 }
 
-function ServiceFullCardContent({ service }: { service: ServiceData }) {
+function ServiceFullCardContent({ 
+  service,
+  onEdit,
+  onQuickVisitors
+}: { 
+  service: ServiceData;
+  onEdit?: (service: ServiceData) => void;
+  onQuickVisitors?: (service: ServiceData) => void;
+}) {
   return (
     <div className="bg-slate-50/60 border border-slate-200/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-5">
+      {/* Alerta de Contagem de Visitantes Pendente */}
+      {service.visitorsPending && (
+        <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-4 h-4 text-amber-600 shrink-0 animate-pulse" />
+            <div>
+              <span className="font-bold text-amber-950 block">Contagem de visitantes pendente</span>
+              <span className="text-[11px] text-amber-800">
+                Os dados do culto foram registrados previamente. Você pode informar a contagem assim que a recepção finalizar.
+              </span>
+            </div>
+          </div>
+          {onQuickVisitors && (
+            <button
+              type="button"
+              onClick={() => onQuickVisitors(service)}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition-colors shrink-0 cursor-pointer text-xs flex items-center justify-center gap-1.5 shadow-2xs"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Preencher Visitantes Agora
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Linha Superior: Adultos (Esquerda) e Dados da Ministração (Direita) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Bloco Esquerda: Tipo do Culto e Adultos Presentes */}
         <div className="lg:col-span-5 flex flex-col justify-between">
-          <div className="mb-3">
+          <div className="mb-3 flex items-center justify-between">
             <span className="text-xs text-blue-700 font-semibold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 inline-block">
               {service.name}
             </span>
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(service)}
+                className="text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1 rounded-lg border border-slate-200 transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                title="Editar todos os dados deste culto"
+              >
+                <Edit2 className="w-3 h-3" />
+                Editar Culto
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 mb-2">
@@ -198,10 +242,35 @@ function ServiceFullCardContent({ service }: { service: ServiceData }) {
           </span>
           <div className="flex flex-wrap items-center gap-2">
             {/* Visitantes */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold">
-              <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{service.visitors} visitantes</span>
-            </div>
+            {service.visitorsPending ? (
+              <button
+                type="button"
+                onClick={() => onQuickVisitors && onQuickVisitors(service)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 text-xs font-bold transition-all cursor-pointer shadow-2xs group/btn"
+                title="Clique para adicionar os visitantes deste culto"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                <span>Visitantes Pendentes</span>
+                <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-semibold group-hover/btn:bg-amber-600 group-hover/btn:text-white transition-colors">
+                  + Informar
+                </span>
+              </button>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold">
+                <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{service.visitors} visitantes</span>
+                {onQuickVisitors && (
+                  <button
+                    type="button"
+                    onClick={() => onQuickVisitors(service)}
+                    className="text-emerald-700/60 hover:text-emerald-800 p-0.5 rounded ml-0.5 cursor-pointer"
+                    title="Editar quantidade de visitantes"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Crianças */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold">
@@ -235,9 +304,13 @@ function ServiceFullCardContent({ service }: { service: ServiceData }) {
               <Users className="w-4 h-4 text-slate-400 shrink-0" />
               <span>
                 Visitantes / Adultos:{' '}
-                <strong className="text-emerald-700 font-bold">
-                  {service.adults > 0 ? ((service.visitors / service.adults) * 100).toFixed(1) : '0.0'}%
-                </strong>
+                {service.visitorsPending ? (
+                  <span className="text-amber-700 font-bold italic">Aguardando contagem</span>
+                ) : (
+                  <strong className="text-emerald-700 font-bold">
+                    {service.adults > 0 ? ((service.visitors / service.adults) * 100).toFixed(1) : '0.0'}%
+                  </strong>
+                )}
               </span>
             </div>
           </div>
@@ -256,6 +329,9 @@ export default function App() {
   const [selectedServiceType, setSelectedServiceType] = useState<string>('');
   const [timelineMode, setTimelineMode] = useState<'composition' | 'types' | 'individual'>('composition');
   const [isInputModalOpen, setIsInputModalOpen] = useState(false);
+  const [serviceToEdit, setServiceToEdit] = useState<ServiceData | null>(null);
+  const [quickVisitorsModalService, setQuickVisitorsModalService] = useState<ServiceData | null>(null);
+  const [quickVisitorsInput, setQuickVisitorsInput] = useState<string>('');
   const [selectedServiceModal, setSelectedServiceModal] = useState<ServiceData | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -381,6 +457,85 @@ export default function App() {
       setToastMessage(null);
     }, 5000);
   };
+
+  const handleUpdateService = async (id: string, updatedService: Partial<ServiceData>) => {
+    try {
+      await api.updateService(id, updatedService);
+      const freshData = await api.getServices();
+      setAccumulatedServices(freshData);
+      setToastMessage(`✅ Culto atualizado no Neon Postgres com sucesso!`);
+    } catch (err: any) {
+      console.warn('Erro ao atualizar no Neon Postgres, usando memória local:', err);
+      setAccumulatedServices(prev =>
+        prev.map(s => {
+          if (s.id === id) {
+            const adults = updatedService.adults !== undefined ? updatedService.adults : s.adults;
+            const kids = updatedService.kids !== undefined ? updatedService.kids : s.kids;
+            return {
+              ...s,
+              ...updatedService,
+              adults,
+              kids,
+              total: adults + kids
+            };
+          }
+          return s;
+        })
+      );
+      setToastMessage(`⚠️ Culto atualizado em memória local (${err.message || 'Banco offline'})`);
+    }
+
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 5000);
+  };
+
+  const handleDeleteService = async (id: string, name: string, date: string) => {
+    // eslint-disable-next-line no-restricted-globals
+    if (!confirm(`Tem certeza que deseja excluir o culto "${name}" (${date})?`)) {
+      return;
+    }
+
+    try {
+      await api.deleteService(id);
+      const freshData = await api.getServices();
+      setAccumulatedServices(freshData);
+      setToastMessage(`🗑️ Culto "${name}" (${date}) excluído com sucesso!`);
+    } catch (err: any) {
+      console.warn('Erro ao deletar no Neon Postgres, usando memória local:', err);
+      setAccumulatedServices(prev => prev.filter(s => s.id !== id));
+      setToastMessage(`⚠️ Culto removido localmente`);
+    }
+
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 5000);
+  };
+
+  const handleOpenQuickVisitors = (service: ServiceData) => {
+    setQuickVisitorsModalService(service);
+    setQuickVisitorsInput(service.visitorsPending ? '' : (service.visitors > 0 ? String(service.visitors) : ''));
+  };
+
+  const handleSaveQuickVisitors = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickVisitorsModalService) return;
+
+    const num = quickVisitorsInput.trim() === '' ? 0 : parseInt(quickVisitorsInput, 10);
+    if (isNaN(num) || num < 0) return;
+
+    await handleUpdateService(quickVisitorsModalService.id, {
+      visitors: num,
+      visitorsPending: false
+    });
+    setToastMessage(`✅ Contagem de ${num} visitantes registrada para o culto de ${quickVisitorsModalService.date}!`);
+    setQuickVisitorsModalService(null);
+  };
+
+  // Cultos com contagem de visitantes pendente
+  const pendingVisitorsServices = useMemo(() => {
+    return accumulatedServices.filter(s => Boolean(s.visitorsPending));
+  }, [accumulatedServices]);
 
   const clearData = () => {
     // eslint-disable-next-line no-restricted-globals
@@ -997,6 +1152,48 @@ export default function App() {
               </div>
             </div>
 
+            {/* Banner Informativo de Cultos com Visitantes Pendentes (Entrada Gradual) */}
+            {pendingVisitorsServices.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-200/90 rounded-2xl p-4 md:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
+                    <Clock className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-amber-950">
+                        {pendingVisitorsServices.length === 1 
+                          ? '1 culto aguardando contagem de visitantes' 
+                          : `${pendingVisitorsServices.length} cultos aguardando contagem de visitantes`}
+                      </h4>
+                      <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        Ação Pendente
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-800/90 mt-0.5">
+                      Os dados de presença foram registrados aos poucos. Assim que a recepção finalizar a contagem de visitantes, informe o número com 1 clique:
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {pendingVisitorsServices.slice(0, 4).map(service => (
+                    <button
+                      key={service.id}
+                      type="button"
+                      onClick={() => handleOpenQuickVisitors(service)}
+                      className="text-xs font-semibold bg-white hover:bg-amber-100/60 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer flex items-center gap-2 group/btn"
+                    >
+                      <span>{service.name} • {service.date}</span>
+                      <span className="text-[10px] bg-amber-600 group-hover/btn:bg-amber-700 text-white px-2 py-0.5 rounded-md font-bold transition-colors">
+                        + Informar
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Seção: Cards de Informação do Último Culto Adultos */}
             {latestServicesInfo && latestServicesInfo.latestOverall && (
               <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-100 space-y-5">
@@ -1021,7 +1218,14 @@ export default function App() {
                 </div>
 
                 {/* Card Único Mesclado: Informações do Último Culto */}
-                <ServiceFullCardContent service={latestServicesInfo.latestOverall} />
+                <ServiceFullCardContent 
+                  service={latestServicesInfo.latestOverall} 
+                  onEdit={(s) => {
+                    setServiceToEdit(s);
+                    setIsInputModalOpen(true);
+                  }}
+                  onQuickVisitors={handleOpenQuickVisitors}
+                />
 
                 {/* Sub-cards: Os outros 3 últimos cultos anteriores */}
                 {latestServicesInfo.previousServices.length > 0 && (
@@ -1065,9 +1269,16 @@ export default function App() {
 
                             {/* Info pequena de visitantes e crianças */}
                             <div className="flex items-center gap-1.5 pt-2 border-t border-slate-200/60 text-[11px]">
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200/60">
-                                {service.visitors} visitantes
-                              </span>
+                              {service.visitorsPending ? (
+                                <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-semibold border border-amber-200/60 flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0 animate-pulse" />
+                                  Visitantes pendentes
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200/60">
+                                  {service.visitors} visitantes
+                                </span>
+                              )}
                               <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-semibold border border-amber-200/60">
                                 {service.kids} crianças
                               </span>
@@ -1753,6 +1964,12 @@ export default function App() {
               activeFiltersCount={activeFiltersCount}
               handleResetFilters={handleResetFilters}
               parseServiceDate={parseServiceDate}
+              onEditService={(service) => {
+                setServiceToEdit(service);
+                setIsInputModalOpen(true);
+              }}
+              onQuickEditVisitors={handleOpenQuickVisitors}
+              onDeleteService={handleDeleteService}
             />
 
             </div>
@@ -1761,9 +1978,15 @@ export default function App() {
           {/* Modal / Drawer for Optimized Data Input */}
           <ReportInputModal
             isOpen={isInputModalOpen}
-            onClose={() => setIsInputModalOpen(false)}
+            onClose={() => {
+              setIsInputModalOpen(false);
+              setServiceToEdit(null);
+            }}
             onSubmitText={handleSubmitReport}
             onAddSingleService={handleAddSingleService}
+            onUpdateService={handleUpdateService}
+            serviceToEdit={serviceToEdit}
+            existingServices={accumulatedServices}
             parseReport={parseReport}
             ministerOptions={ministerOptions}
           />
@@ -1807,7 +2030,18 @@ export default function App() {
 
                 {/* Conteúdo: Card Completo com Scroll se necessário */}
                 <div className="p-4 sm:p-6 overflow-y-auto">
-                  <ServiceFullCardContent service={selectedServiceModal} />
+                  <ServiceFullCardContent 
+                    service={selectedServiceModal}
+                    onEdit={(s) => {
+                      setSelectedServiceModal(null);
+                      setServiceToEdit(s);
+                      setIsInputModalOpen(true);
+                    }}
+                    onQuickVisitors={(s) => {
+                      setSelectedServiceModal(null);
+                      handleOpenQuickVisitors(s);
+                    }}
+                  />
                 </div>
 
                 {/* Footer do Modal */}
@@ -1815,13 +2049,119 @@ export default function App() {
                   <span className="text-xs text-slate-500 font-medium">
                     Culto: <strong className="text-slate-800">{selectedServiceModal.name}</strong>
                   </span>
-                  <button
-                    onClick={() => setSelectedServiceModal(null)}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-                  >
-                    Fechar
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const s = selectedServiceModal;
+                        setSelectedServiceModal(null);
+                        setServiceToEdit(s);
+                        setIsInputModalOpen(true);
+                      }}
+                      className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Editar Culto
+                    </button>
+                    <button
+                      onClick={() => setSelectedServiceModal(null)}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      Fechar
+                    </button>
+                  </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Rápido: Adicionar / Atualizar Visitantes */}
+          {quickVisitorsModalService && (
+            <div 
+              className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+              onClick={() => setQuickVisitorsModalService(null)}
+            >
+              <div 
+                className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <form onSubmit={handleSaveQuickVisitors}>
+                  {/* Header */}
+                  <div className="p-5 border-b border-slate-100 bg-slate-50/70 flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                        <UserPlus className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">
+                          Informar Visitantes
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {quickVisitorsModalService.name} • {quickVisitorsModalService.date}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setQuickVisitorsModalService(null)}
+                      className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-5 space-y-4">
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs text-slate-600 flex items-center justify-between">
+                      <span>Presença já registrada:</span>
+                      <span className="font-semibold text-slate-800">
+                        {quickVisitorsModalService.adults} adultos • {quickVisitorsModalService.kids} crianças
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Quantidade de Visitantes Contados
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          required
+                          autoFocus
+                          placeholder="Ex: 14"
+                          value={quickVisitorsInput}
+                          onChange={(e) => setQuickVisitorsInput(e.target.value)}
+                          className="w-full text-2xl font-bold px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900"
+                        />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
+                          visitantes
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1.5">
+                        O status de pendente será concluído e os totais serão atualizados imediatamente.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setQuickVisitorsModalService(null)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2 px-5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Salvar Visitantes
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

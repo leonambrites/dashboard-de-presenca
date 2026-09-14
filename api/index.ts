@@ -82,11 +82,13 @@ router.post('/init-db', async (_req: Request, res: Response) => {
         visitors INT DEFAULT 0,
         kids INT DEFAULT 0,
         total INT DEFAULT 0,
+        "visitorsPending" BOOLEAN DEFAULT FALSE,
         "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_services_name_date ON services (name, date);`;
+    await sql`ALTER TABLE services ADD COLUMN IF NOT EXISTS "visitorsPending" BOOLEAN DEFAULT FALSE;`;
     res.json({ success: true, message: 'Tabela services e índice único verificados no Neon Postgres com sucesso!' });
   } catch (error: any) {
     console.error('Erro ao inicializar Neon Postgres:', error);
@@ -102,7 +104,8 @@ router.get('/services', async (_req: Request, res: Response) => {
     const standardized = rows.map((r: any) => ({
       ...r,
       name: standardizeServiceType(r.name),
-      minister: standardizeMinister(r.minister)
+      minister: standardizeMinister(r.minister),
+      visitorsPending: Boolean(r.visitorsPending)
     }));
     return res.json(standardized);
   } catch (error: any) {
@@ -125,18 +128,19 @@ router.get('/services/bulk', (_req: Request, res: Response) => {
 router.post('/services', async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
-    const { name, date, minister, theme, adults, visitors, kids } = req.body;
+    const { name, date, minister, theme, adults, visitors, kids, visitorsPending } = req.body;
     const stdName = standardizeServiceType(name);
     const stdMinister = standardizeMinister(minister);
     const adultsNum = Number(adults) || 0;
     const visitorsNum = Number(visitors) || 0;
     const kidsNum = Number(kids) || 0;
     const total = adultsNum + kidsNum;
+    const isPending = typeof visitorsPending === 'boolean' ? visitorsPending : (visitorsNum === 0 && Boolean(visitorsPending));
     const id = Math.random().toString(36).substring(2, 11);
 
     const rows = await sql`
-      INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
-      VALUES (${id}, ${stdName}, ${date}, ${stdMinister}, ${theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "visitorsPending", "createdAt", "updatedAt")
+      VALUES (${id}, ${stdName}, ${date}, ${stdMinister}, ${theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, ${isPending}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT (name, date) DO UPDATE SET
         minister = EXCLUDED.minister,
         theme = COALESCE(EXCLUDED.theme, services.theme),
@@ -144,6 +148,7 @@ router.post('/services', async (req: Request, res: Response) => {
         visitors = EXCLUDED.visitors,
         kids = EXCLUDED.kids,
         total = EXCLUDED.total,
+        "visitorsPending" = EXCLUDED."visitorsPending",
         "updatedAt" = CURRENT_TIMESTAMP
       RETURNING *
     `;
@@ -172,11 +177,12 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
         const visitorsNum = Number(service.visitors) || 0;
         const kidsNum = Number(service.kids) || 0;
         const total = adultsNum + kidsNum;
+        const isPending = Boolean(service.visitorsPending);
         const id = service.id || Math.random().toString(36).substring(2, 11);
 
         const rows = await sql`
-          INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "createdAt", "updatedAt")
-          VALUES (${id}, ${stdName}, ${service.date}, ${stdMinister}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          INSERT INTO services (id, name, date, minister, theme, adults, visitors, kids, total, "visitorsPending", "createdAt", "updatedAt")
+          VALUES (${id}, ${stdName}, ${service.date}, ${stdMinister}, ${service.theme || null}, ${adultsNum}, ${visitorsNum}, ${kidsNum}, ${total}, ${isPending}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
           ON CONFLICT (name, date) DO UPDATE SET
             minister = EXCLUDED.minister,
             theme = COALESCE(EXCLUDED.theme, services.theme),
@@ -184,6 +190,7 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
             visitors = EXCLUDED.visitors,
             kids = EXCLUDED.kids,
             total = EXCLUDED.total,
+            "visitorsPending" = EXCLUDED."visitorsPending",
             "updatedAt" = CURRENT_TIMESTAMP
           RETURNING *
         `;
@@ -203,13 +210,14 @@ router.put('/services/:id', async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
     const { id } = req.params;
-    const { name, date, minister, theme, adults, visitors, kids } = req.body;
+    const { name, date, minister, theme, adults, visitors, kids, visitorsPending } = req.body;
     const stdName = standardizeServiceType(name);
     const stdMinister = standardizeMinister(minister);
     const adultsNum = Number(adults) || 0;
     const visitorsNum = Number(visitors) || 0;
     const kidsNum = Number(kids) || 0;
     const total = adultsNum + kidsNum;
+    const isPending = typeof visitorsPending === 'boolean' ? visitorsPending : (visitorsNum > 0 ? false : undefined);
 
     const rows = await sql`
       UPDATE services
@@ -221,6 +229,7 @@ router.put('/services/:id', async (req: Request, res: Response) => {
           visitors = ${visitorsNum},
           kids = ${kidsNum},
           total = ${total},
+          "visitorsPending" = COALESCE(${isPending !== undefined ? isPending : null}, "visitorsPending"),
           "updatedAt" = CURRENT_TIMESTAMP
       WHERE id = ${id}
       RETURNING *
