@@ -67,8 +67,9 @@ app.use(express.json({ limit: '10mb' }));
 
 const router = Router();
 
-// Rota de saúde/verificação de banco
-router.post('/init-db', async (_req: Request, res: Response) => {
+let schemaEnsured = false;
+async function ensureSchema() {
+  if (schemaEnsured) return;
   try {
     const sql = getNeonSql();
     await sql`
@@ -89,12 +90,75 @@ router.post('/init-db', async (_req: Request, res: Response) => {
     `;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_services_name_date ON services (name, date);`;
     await sql`ALTER TABLE services ADD COLUMN IF NOT EXISTS "visitorsPending" BOOLEAN DEFAULT FALSE;`;
-    res.json({ success: true, message: 'Tabela services e índice único verificados no Neon Postgres com sucesso!' });
+
+    // Tabela para acompanhamento de crescimento (Reunião de Conexão, Batismos, Membros)
+    await sql`
+      CREATE TABLE IF NOT EXISTS growth_records (
+        id VARCHAR(255) PRIMARY KEY,
+        type VARCHAR(50) NOT NULL,
+        year INT NOT NULL DEFAULT 2026,
+        month INT NOT NULL,
+        month_label VARCHAR(20) NOT NULL,
+        count INT NOT NULL DEFAULT 0,
+        notes TEXT,
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_growth_type_year_month ON growth_records (type, year, month);`;
+
+    // Seed com os dados oficiais de 2026 caso ainda não existam
+    const initialGrowthData = [
+      // Reunião de Conexão
+      { type: 'conexao', year: 2026, month: 2, month_label: 'Fev', count: 30 },
+      { type: 'conexao', year: 2026, month: 5, month_label: 'Mai', count: 33 },
+      { type: 'conexao', year: 2026, month: 6, month_label: 'Jun', count: 20 },
+      { type: 'conexao', year: 2026, month: 9, month_label: 'Set', count: 23 },
+      // Batismo
+      { type: 'batismo', year: 2026, month: 3, month_label: 'Mar', count: 6 },
+      { type: 'batismo', year: 2026, month: 4, month_label: 'Abr', count: 4 },
+      { type: 'batismo', year: 2026, month: 5, month_label: 'Mai', count: 1 },
+      { type: 'batismo', year: 2026, month: 6, month_label: 'Jun', count: 4 },
+      { type: 'batismo', year: 2026, month: 7, month_label: 'Jul', count: 6 },
+      { type: 'batismo', year: 2026, month: 8, month_label: 'Ago', count: 1 },
+      { type: 'batismo', year: 2026, month: 9, month_label: 'Set', count: 3 },
+    ];
+
+    for (const item of initialGrowthData) {
+      const id = `growth_${item.type}_${item.year}_${item.month}`;
+      await sql`
+        INSERT INTO growth_records (id, type, year, month, month_label, count, "createdAt", "updatedAt")
+        VALUES (${id}, ${item.type}, ${item.year}, ${item.month}, ${item.month_label}, ${item.count}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (type, year, month) DO NOTHING
+      `;
+    }
+
+    schemaEnsured = true;
+  } catch (error: any) {
+    console.error('Erro ao verificar/migrar schema no Neon Postgres:', error);
+  }
+}
+
+// Middleware para garantir schema antes de qualquer operação
+router.use(async (_req: Request, _res: Response, next) => {
+  await ensureSchema();
+  next();
+});
+
+// Rota de saúde/verificação de banco (suporta GET e POST)
+const handleInitDb = async (_req: Request, res: Response) => {
+  try {
+    schemaEnsured = false;
+    await ensureSchema();
+    res.json({ success: true, message: 'Tabela services e coluna visitorsPending verificadas no Neon Postgres com sucesso!' });
   } catch (error: any) {
     console.error('Erro ao inicializar Neon Postgres:', error);
     res.status(500).json({ success: false, error: error.message });
   }
-});
+};
+
+router.get('/init-db', handleInitDb);
+router.post('/init-db', handleInitDb);
 
 // GET /services - Buscar todos os cultos do Neon Postgres
 router.get('/services', async (_req: Request, res: Response) => {
@@ -252,6 +316,74 @@ router.delete('/services/:id', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Erro ao deletar culto:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+const MONTH_LABELS: Record<number, string> = {
+  1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun',
+  7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'
+};
+
+// GET /growth - Buscar registros de crescimento (filtro opcional por ano)
+router.get('/growth', async (req: Request, res: Response) => {
+  try {
+    const sql = getNeonSql();
+    const year = req.query.year ? Number(req.query.year) : 2026;
+    const rows = await sql`
+      SELECT id, type, year, month, month_label as "monthLabel", count, notes, "createdAt", "updatedAt"
+      FROM growth_records
+      WHERE year = ${year}
+      ORDER BY month ASC, type ASC
+    `;
+    return res.json(rows);
+  } catch (error: any) {
+    console.error('Erro ao buscar dados de crescimento:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /growth - Salvar ou atualizar contagem mensal de crescimento
+router.post('/growth', async (req: Request, res: Response) => {
+  try {
+    const sql = getNeonSql();
+    const { type, year, month, count, notes } = req.body;
+    if (!type || !year || !month) {
+      return res.status(400).json({ error: 'type, year e month são obrigatórios' });
+    }
+    const yearNum = Number(year);
+    const monthNum = Number(month);
+    const countNum = Math.max(0, Number(count) || 0);
+    const monthLabel = MONTH_LABELS[monthNum] || `Mês ${monthNum}`;
+    const id = `growth_${type}_${yearNum}_${monthNum}`;
+
+    const rows = await sql`
+      INSERT INTO growth_records (id, type, year, month, month_label, count, notes, "createdAt", "updatedAt")
+      VALUES (${id}, ${type}, ${yearNum}, ${monthNum}, ${monthLabel}, ${countNum}, ${notes || null}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (type, year, month) DO UPDATE SET
+        count = EXCLUDED.count,
+        notes = COALESCE(EXCLUDED.notes, growth_records.notes),
+        month_label = EXCLUDED.month_label,
+        "updatedAt" = CURRENT_TIMESTAMP
+      RETURNING id, type, year, month, month_label as "monthLabel", count, notes, "createdAt", "updatedAt"
+    `;
+
+    return res.status(201).json(rows[0]);
+  } catch (error: any) {
+    console.error('Erro ao salvar registro de crescimento:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /growth/:id - Excluir registro de crescimento
+router.delete('/growth/:id', async (req: Request, res: Response) => {
+  try {
+    const sql = getNeonSql();
+    const { id } = req.params;
+    await sql`DELETE FROM growth_records WHERE id = ${id}`;
+    return res.json({ success: true, id });
+  } catch (error: any) {
+    console.error('Erro ao deletar registro de crescimento:', error);
+    return res.status(500).json({ error: error.message });
   }
 });
 

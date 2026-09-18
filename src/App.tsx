@@ -7,8 +7,9 @@ import {
 } from 'lucide-react';
 import { ReportInputModal } from './components/ReportInputModal';
 import { ServicesTable } from './components/ServicesTable';
+import { GrowthTrackingView } from './components/GrowthTrackingView';
 import { api } from './lib/api';
-import { ServiceData, ReportData } from './types';
+import { ServiceData, ReportData, GrowthRecord } from './types';
 import { DEFAULT_REPORT_TEXT } from './data/defaultReports';
 
 function toTitleCase(str: string) {
@@ -336,6 +337,9 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [mainTab, setMainTab] = useState<'cultos' | 'crescimento'>('cultos');
+  const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
+  const [growthYear, setGrowthYear] = useState<number>(2026);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -393,6 +397,21 @@ export default function App() {
     }
     loadServices();
   }, [initialData.services]);
+
+  // Carregar dados de crescimento (Conexão, Batismo, Membros)
+  useEffect(() => {
+    async function loadGrowth() {
+      try {
+        const records = await api.getGrowthRecords(growthYear);
+        if (records) {
+          setGrowthRecords(records);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar registros de crescimento:', err);
+      }
+    }
+    loadGrowth();
+  }, [growthYear]);
 
   const handleSubmitReport = async (text: string) => {
     if (!text.trim()) return;
@@ -1057,7 +1076,52 @@ export default function App() {
           </div>
         )}
 
-        <div className="flex flex-col gap-8">
+        {/* Main Navigation Tabs */}
+        <div className="flex flex-wrap items-center gap-2.5 border-b border-slate-200 pb-3">
+          <button
+            onClick={() => setMainTab('cultos')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
+              mainTab === 'cultos'
+                ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-600/20'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Cultos & Presença</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+              mainTab === 'cultos' ? 'bg-blue-700/80 text-white' : 'bg-slate-100 text-slate-600'
+            }`}>
+              {accumulatedServices.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setMainTab('crescimento')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
+              mainTab === 'crescimento'
+                ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-600/20'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>Vida da Igreja: Conexão, Batismos & Membros</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+              mainTab === 'crescimento' ? 'bg-indigo-700/80 text-white' : 'bg-indigo-50 text-indigo-700'
+            }`}>
+              {growthYear}
+            </span>
+          </button>
+        </div>
+
+        {mainTab === 'crescimento' ? (
+          <GrowthTrackingView
+            records={growthRecords}
+            onRecordsChange={setGrowthRecords}
+            selectedYear={growthYear}
+            onYearChange={setGrowthYear}
+          />
+        ) : (
+          <div className="flex flex-col gap-8">
           
           {accumulatedServices.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 text-center border border-slate-100 shadow-sm flex flex-col items-center justify-center max-w-lg mx-auto my-8">
@@ -2167,6 +2231,7 @@ export default function App() {
           )}
 
         </div>
+        )}
       </div>
     </div>
   );

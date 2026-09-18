@@ -18,3 +18,17 @@ export interface ReportData {
 
 export type SortField = 'date' | 'name' | 'theme' | 'minister' | 'adults' | 'visitors' | 'kids' | 'total';
 export type SortDirection = 'asc' | 'desc';
+
+export type GrowthType = 'conexao' | 'batismo' | 'membros';
+
+export interface GrowthRecord {
+  id: string;
+  type: GrowthType;
+  year: number;
+  month: number;
+  monthLabel: string;
+  count: number;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

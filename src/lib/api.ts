@@ -1,4 +1,4 @@
-import { ServiceData } from '../types';
+import { GrowthRecord, GrowthType, ServiceData } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -78,6 +78,49 @@ export const api = {
     });
     if (!res.ok) {
       throw new Error(`Falha ao excluir culto: ${res.statusText}`);
+    }
+  },
+
+  // Buscar registros de crescimento (Conexão, Batismo, Membros)
+  async getGrowthRecords(year: number = 2026): Promise<GrowthRecord[]> {
+    const res = await fetch(`${API_BASE_URL}/growth?year=${year}`);
+    if (!res.ok) {
+      throw new Error(`Falha ao buscar dados de crescimento: ${res.statusText}`);
+    }
+    return res.json();
+  },
+
+  // Salvar ou atualizar registro de crescimento
+  async saveGrowthRecord(record: {
+    type: GrowthType;
+    year: number;
+    month: number;
+    count: number;
+    notes?: string;
+  }): Promise<GrowthRecord> {
+    const res = await fetch(`${API_BASE_URL}/growth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record),
+    });
+    if (!res.ok) {
+      let errDetail = res.statusText;
+      try {
+        const errJson = await res.json();
+        if (errJson.error) errDetail = errJson.error;
+      } catch (_) {}
+      throw new Error(`Falha ao salvar registro de crescimento: ${errDetail}`);
+    }
+    return res.json();
+  },
+
+  // Deletar registro de crescimento
+  async deleteGrowthRecord(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/growth/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      throw new Error(`Falha ao excluir registro de crescimento: ${res.statusText}`);
     }
   },
 
