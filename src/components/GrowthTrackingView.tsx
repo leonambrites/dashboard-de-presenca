@@ -24,7 +24,8 @@ import {
   Tooltip,
   Legend,
   LineChart,
-  Line
+  Line,
+  LabelList
 } from 'recharts';
 import { GrowthRecord, GrowthType } from '../types';
 import { api } from '../lib/api';
@@ -352,7 +353,7 @@ export function GrowthTrackingView({
         <div className="h-72 sm:h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'bar' ? (
-              <BarChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={monthlyChartData} margin={{ top: 22, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="month" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
@@ -371,14 +372,35 @@ export function GrowthTrackingView({
                   iconType="circle"
                   wrapperStyle={{ paddingBottom: '16px', fontSize: '12px' }}
                 />
-                <Bar dataKey="Reunião de Conexão" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="Batismo" fill="#0284c7" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="Reunião de Conexão" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={28}>
+                  <LabelList
+                    dataKey="Reunião de Conexão"
+                    position="top"
+                    formatter={(val: any) => (Number(val) > 0 ? val : '')}
+                    style={{ fontSize: 11, fontWeight: 700, fill: '#4f46e5' }}
+                  />
+                </Bar>
+                <Bar dataKey="Batismo" fill="#0284c7" radius={[6, 6, 0, 0]} maxBarSize={28}>
+                  <LabelList
+                    dataKey="Batismo"
+                    position="top"
+                    formatter={(val: any) => (Number(val) > 0 ? val : '')}
+                    style={{ fontSize: 11, fontWeight: 700, fill: '#0284c7' }}
+                  />
+                </Bar>
                 {membrosTotal > 0 && (
-                  <Bar dataKey="Novos Membros" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="Novos Membros" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={28}>
+                    <LabelList
+                      dataKey="Novos Membros"
+                      position="top"
+                      formatter={(val: any) => (Number(val) > 0 ? val : '')}
+                      style={{ fontSize: 11, fontWeight: 700, fill: '#059669' }}
+                    />
+                  </Bar>
                 )}
               </BarChart>
             ) : (
-              <LineChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <LineChart data={monthlyChartData} margin={{ top: 22, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="month" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
@@ -404,7 +426,15 @@ export function GrowthTrackingView({
                   strokeWidth={3}
                   dot={{ r: 4, fill: '#6366f1' }}
                   activeDot={{ r: 6 }}
-                />
+                >
+                  <LabelList
+                    dataKey="Reunião de Conexão"
+                    position="top"
+                    offset={8}
+                    formatter={(val: any) => (Number(val) > 0 ? val : '')}
+                    style={{ fontSize: 11, fontWeight: 700, fill: '#4f46e5' }}
+                  />
+                </Line>
                 <Line
                   type="monotone"
                   dataKey="Batismo"
@@ -412,7 +442,15 @@ export function GrowthTrackingView({
                   strokeWidth={3}
                   dot={{ r: 4, fill: '#0284c7' }}
                   activeDot={{ r: 6 }}
-                />
+                >
+                  <LabelList
+                    dataKey="Batismo"
+                    position="top"
+                    offset={8}
+                    formatter={(val: any) => (Number(val) > 0 ? val : '')}
+                    style={{ fontSize: 11, fontWeight: 700, fill: '#0284c7' }}
+                  />
+                </Line>
                 {membrosTotal > 0 && (
                   <Line
                     type="monotone"
@@ -421,7 +459,15 @@ export function GrowthTrackingView({
                     strokeWidth={3}
                     dot={{ r: 4, fill: '#10b981' }}
                     activeDot={{ r: 6 }}
-                  />
+                  >
+                    <LabelList
+                      dataKey="Novos Membros"
+                      position="top"
+                      offset={8}
+                      formatter={(val: any) => (Number(val) > 0 ? val : '')}
+                      style={{ fontSize: 11, fontWeight: 700, fill: '#059669' }}
+                    />
+                  </Line>
                 )}
               </LineChart>
             )}
