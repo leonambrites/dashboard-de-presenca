@@ -276,7 +276,7 @@ export function GrowthTrackingView({
         <div className="bg-gradient-to-br from-sky-50/70 to-blue-50/40 p-6 rounded-2xl border border-sky-100 shadow-xs relative overflow-hidden group hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-sky-700 bg-sky-100/80 px-2.5 py-1 rounded-lg">
-              Batismos nas Águas
+              Batismos
             </span>
             <div className="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-xs">
               <Droplets className="w-5 h-5" />
@@ -581,7 +581,7 @@ export function GrowthTrackingView({
               <div className="p-4 bg-sky-50/60 border-b border-sky-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Droplets className="w-4 h-4 text-sky-600" />
-                  <h4 className="font-bold text-slate-800 text-sm">Batismos nas Águas</h4>
+                  <h4 className="font-bold text-slate-800 text-sm">Batismos</h4>
                 </div>
                 <button
                   onClick={() => handleOpenAdd('batismo')}
@@ -745,7 +745,7 @@ export function GrowthTrackingView({
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
                 >
                   <option value="conexao">🤝 Reunião de Conexão</option>
-                  <option value="batismo">🌊 Batismo nas Águas</option>
+                  <option value="batismo">🌊 Batismos</option>
                   <option value="membros">👥 Novos Membros</option>
                 </select>
               </div>
