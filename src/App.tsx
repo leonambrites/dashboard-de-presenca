@@ -1104,7 +1104,7 @@ export default function App() {
             }`}
           >
             <TrendingUp className="w-4 h-4" />
-            <span>Acompanhamento Novos Membros</span>
+            <span>Novos Membros</span>
             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
               mainTab === 'crescimento' ? 'bg-indigo-700/80 text-white' : 'bg-indigo-50 text-indigo-700'
             }`}>
