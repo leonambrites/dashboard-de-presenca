@@ -3,12 +3,12 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
 import { 
-  Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, CheckCircle2, Sparkles, BookOpen, User, MessageSquare, ChevronRight, Edit2, Edit3
+  Users, UserPlus, Baby, TrendingUp, Calendar, MapPin, FileText, Plus, Calculator, Trash2, Clock, Download, ArrowUpRight, ArrowDownRight, Award, Activity, SlidersHorizontal, Trophy, X, CheckCircle2, Sparkles, BookOpen, User, MessageSquare, ChevronRight, Edit2, Edit3, Lock
 } from 'lucide-react';
 import { ReportInputModal } from './components/ReportInputModal';
 import { ServicesTable } from './components/ServicesTable';
 import { GrowthTrackingView } from './components/GrowthTrackingView';
-import { api } from './lib/api';
+import { api, ApiError } from './lib/api';
 import { ServiceData, ReportData, GrowthRecord } from './types';
 import { DEFAULT_REPORT_TEXT } from './data/defaultReports';
 
@@ -40,6 +40,16 @@ function parseServiceDate(dateStr: string): Date {
   return new Date(0);
 }
 
+function normalizeServiceDate(dateStr: string): string {
+  const parts = dateStr.split(/[./-]/);
+  if (parts.length !== 3) return dateStr;
+  const day = parts[0].padStart(2, '0');
+  const month = parts[1].padStart(2, '0');
+  let year = parts[2];
+  if (year.length === 2) year = `20${year}`;
+  return `${day}.${month}.${year}`;
+}
+
 function parseReport(text: string): ReportData {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l);
   
@@ -54,7 +64,7 @@ function parseReport(text: string): ReportData {
       continue;
     }
 
-    const dateMatch = line.match(/(.*?)\s*(?:-)?\s*(\d{2}\.\d{2}\.\d{4})/);
+    const dateMatch = line.match(/(.*?)\s*(?:-)?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/);
     if (dateMatch) {
       if (currentService && currentService.name) {
         services.push(currentService as ServiceData);
@@ -67,8 +77,8 @@ function parseReport(text: string): ReportData {
 
       currentService = {
         id: Math.random().toString(36).substring(7),
-        name: dateMatch[1].trim(),
-        date: dateMatch[2].trim(),
+        name: dateMatch[1].replace(/[-\s]+$/, '').trim(),
+        date: normalizeServiceDate(dateMatch[2].trim()),
         minister: '',
         theme: '',
         adults: 0,
@@ -92,8 +102,8 @@ function parseReport(text: string): ReportData {
       } else if (lowerLine.includes('visitantes:')) {
         const match = line.match(/Visitantes:\s*(\d+)/i);
         currentService.visitors = match ? parseInt(match[1], 10) : 0;
-      } else if (lowerLine.includes('crianças:')) {
-        const match = line.match(/Crianças:\s*(\d+)/i);
+      } else if (/crian[cç]as:/i.test(line)) {
+        const match = line.match(/Crian[cç]as:\s*(\d+)/i);
         currentService.kids = match ? parseInt(match[1], 10) : 0;
       }
     }
@@ -340,6 +350,38 @@ export default function App() {
   const [mainTab, setMainTab] = useState<'cultos' | 'crescimento'>('cultos');
   const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
   const [growthYear, setGrowthYear] = useState<number>(2026);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isVerifyingAuth, setIsVerifyingAuth] = useState(false);
+
+  const handleAuthError = (err: unknown): boolean => {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 503)) {
+      setAuthError(err.status === 401 ? 'Informe a senha administrativa para salvar alterações.' : err.message);
+      setIsAuthModalOpen(true);
+      setToastMessage(`🔒 ${err.message}`);
+      return true;
+    }
+    return false;
+  };
+
+  const handleAdminAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminPasswordInput.trim()) return;
+    setIsVerifyingAuth(true);
+    setAuthError(null);
+    try {
+      await api.verifyAdminToken(adminPasswordInput);
+      setIsAuthModalOpen(false);
+      setAdminPasswordInput('');
+      setToastMessage('🔓 Autenticado! Agora você pode repetir a alteração.');
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err: any) {
+      setAuthError(err.message || 'Senha inválida.');
+    } finally {
+      setIsVerifyingAuth(false);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -430,20 +472,22 @@ export default function App() {
       setAccumulatedServices(freshData);
       setToastMessage(`✅ ${count} ${count === 1 ? 'culto gravado' : 'cultos acumulados'} no Neon Postgres com sucesso!`);
     } catch (err: any) {
-      console.warn('Erro ao persistir no Neon Postgres, usando memória local:', err);
-      setAccumulatedServices(prev => {
-        const combined = [...prev];
-        parsed.services.forEach(newService => {
-          const existsIndex = combined.findIndex(s => s.name === newService.name && s.date === newService.date);
-          if (existsIndex === -1) {
-            combined.push(newService);
-          } else {
-            combined[existsIndex] = newService;
-          }
+      if (!handleAuthError(err)) {
+        console.warn('Erro ao persistir no Neon Postgres, usando memória local:', err);
+        setAccumulatedServices(prev => {
+          const combined = [...prev];
+          parsed.services.forEach(newService => {
+            const existsIndex = combined.findIndex(s => s.name === newService.name && s.date === newService.date);
+            if (existsIndex === -1) {
+              combined.push(newService);
+            } else {
+              combined[existsIndex] = newService;
+            }
+          });
+          return combined;
         });
-        return combined;
-      });
-      setToastMessage(`⚠️ Cultos acumulados localmente (Banco offline: ${err.message || 'Erro de conexão'})`);
+        setToastMessage(`⚠️ Cultos acumulados localmente (Banco offline: ${err.message || 'Erro de conexão'})`);
+      }
     }
 
     setTimeout(() => {
@@ -458,18 +502,20 @@ export default function App() {
       setAccumulatedServices(freshData);
       setToastMessage(`✅ Culto "${newService.name}" (${newService.date}) salvo no Neon Postgres com sucesso!`);
     } catch (err: any) {
-      console.warn('Erro ao salvar no Neon Postgres, usando memória local:', err);
-      setAccumulatedServices(prev => {
-        const combined = [...prev];
-        const existsIndex = combined.findIndex(s => s.name === newService.name && s.date === newService.date);
-        if (existsIndex === -1) {
-          combined.push(newService);
-        } else {
-          combined[existsIndex] = newService;
-        }
-        return combined;
-      });
-      setToastMessage(`⚠️ Culto salvo em memória local (Banco offline: ${err.message || 'Erro de conexão'})`);
+      if (!handleAuthError(err)) {
+        console.warn('Erro ao salvar no Neon Postgres, usando memória local:', err);
+        setAccumulatedServices(prev => {
+          const combined = [...prev];
+          const existsIndex = combined.findIndex(s => s.name === newService.name && s.date === newService.date);
+          if (existsIndex === -1) {
+            combined.push(newService);
+          } else {
+            combined[existsIndex] = newService;
+          }
+          return combined;
+        });
+        setToastMessage(`⚠️ Culto salvo em memória local (Banco offline: ${err.message || 'Erro de conexão'})`);
+      }
     }
 
     setTimeout(() => {
@@ -484,24 +530,26 @@ export default function App() {
       setAccumulatedServices(freshData);
       setToastMessage(`✅ Culto atualizado no Neon Postgres com sucesso!`);
     } catch (err: any) {
-      console.warn('Erro ao atualizar no Neon Postgres, usando memória local:', err);
-      setAccumulatedServices(prev =>
-        prev.map(s => {
-          if (s.id === id) {
-            const adults = updatedService.adults !== undefined ? updatedService.adults : s.adults;
-            const kids = updatedService.kids !== undefined ? updatedService.kids : s.kids;
-            return {
-              ...s,
-              ...updatedService,
-              adults,
-              kids,
-              total: adults + kids
-            };
-          }
-          return s;
-        })
-      );
-      setToastMessage(`⚠️ Culto atualizado em memória local (${err.message || 'Banco offline'})`);
+      if (!handleAuthError(err)) {
+        console.warn('Erro ao atualizar no Neon Postgres, usando memória local:', err);
+        setAccumulatedServices(prev =>
+          prev.map(s => {
+            if (s.id === id) {
+              const adults = updatedService.adults !== undefined ? updatedService.adults : s.adults;
+              const kids = updatedService.kids !== undefined ? updatedService.kids : s.kids;
+              return {
+                ...s,
+                ...updatedService,
+                adults,
+                kids,
+                total: adults + kids
+              };
+            }
+            return s;
+          })
+        );
+        setToastMessage(`⚠️ Culto atualizado em memória local (${err.message || 'Banco offline'})`);
+      }
     }
 
     setTimeout(() => {
@@ -521,9 +569,11 @@ export default function App() {
       setAccumulatedServices(freshData);
       setToastMessage(`🗑️ Culto "${name}" (${date}) excluído com sucesso!`);
     } catch (err: any) {
-      console.warn('Erro ao deletar no Neon Postgres, usando memória local:', err);
-      setAccumulatedServices(prev => prev.filter(s => s.id !== id));
-      setToastMessage(`⚠️ Culto removido localmente`);
+      if (!handleAuthError(err)) {
+        console.warn('Erro ao deletar no Neon Postgres, usando memória local:', err);
+        setAccumulatedServices(prev => prev.filter(s => s.id !== id));
+        setToastMessage(`⚠️ Culto removido localmente`);
+      }
     }
 
     setTimeout(() => {
@@ -2231,6 +2281,64 @@ export default function App() {
           )}
 
         </div>
+        )}
+
+        {/* Modal de Autenticação Administrativa */}
+        {isAuthModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+              <form onSubmit={handleAdminAuthSubmit}>
+                <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900">Acesso Administrativo</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthModalOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-3">
+                  <p className="text-xs text-slate-600">
+                    Para criar, editar ou excluir registros, informe a senha administrativa configurada no servidor.
+                  </p>
+                  <input
+                    type="password"
+                    autoFocus
+                    required
+                    placeholder="Senha administrativa"
+                    value={adminPasswordInput}
+                    onChange={(e) => setAdminPasswordInput(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  />
+                  {authError && (
+                    <p className="text-xs text-rose-600 font-medium">{authError}</p>
+                  )}
+                </div>
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthModalOpen(false)}
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isVerifyingAuth}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl cursor-pointer"
+                  >
+                    {isVerifyingAuth ? 'Verificando...' : 'Desbloquear'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </div>

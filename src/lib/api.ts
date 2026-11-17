@@ -1,14 +1,84 @@
 import { GrowthRecord, GrowthType, ServiceData } from '../types';
 
 const API_BASE_URL = '/api';
+const ADMIN_TOKEN_STORAGE_KEY = 'mncs_admin_token';
+
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
+export function getAdminToken(): string {
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setAdminToken(token: string): void {
+  try {
+    if (token.trim()) {
+      sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token.trim());
+    } else {
+      sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors in restricted environments
+  }
+}
+
+function getWriteHeaders(includeJson = true): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (includeJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const token = getAdminToken();
+  if (token) {
+    headers['x-admin-token'] = token;
+  }
+  return headers;
+}
+
+async function throwIfNotOk(res: Response, fallbackPrefix: string): Promise<void> {
+  if (res.ok) return;
+  let detail = res.statusText;
+  try {
+    const errJson = await res.json();
+    if (errJson?.error) detail = errJson.error;
+  } catch {
+    // Ignore non-JSON error responses
+  }
+  throw new ApiError(`${fallbackPrefix}: ${detail}`, res.status);
+}
 
 export const api = {
+  async getAuthStatus(): Promise<{ required: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/auth/status`);
+    await throwIfNotOk(res, 'Falha ao verificar autenticação');
+    return res.json();
+  },
+
+  async verifyAdminToken(token: string): Promise<{ ok: boolean; required: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token.trim() }),
+    });
+    await throwIfNotOk(res, 'Falha na autenticação');
+    const data = await res.json();
+    setAdminToken(token);
+    return data;
+  },
+
   // Buscar todos os cultos cadastrados no banco Neon Postgres
   async getServices(): Promise<ServiceData[]> {
     const res = await fetch(`${API_BASE_URL}/services`);
-    if (!res.ok) {
-      throw new Error(`Falha ao buscar cultos do banco: ${res.statusText}`);
-    }
+    await throwIfNotOk(res, 'Falha ao buscar cultos do banco');
     return res.json();
   },
 
@@ -16,12 +86,10 @@ export const api = {
   async createService(service: Omit<ServiceData, 'id' | 'total'>): Promise<ServiceData> {
     const res = await fetch(`${API_BASE_URL}/services`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getWriteHeaders(),
       body: JSON.stringify(service),
     });
-    if (!res.ok) {
-      throw new Error(`Falha ao criar culto: ${res.statusText}`);
-    }
+    await throwIfNotOk(res, 'Falha ao criar culto');
     return res.json();
   },
 
@@ -36,18 +104,11 @@ export const api = {
       const chunk = services.slice(i, i + CHUNK_SIZE);
       const res = await fetch(`${API_BASE_URL}/services/bulk`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getWriteHeaders(),
         body: JSON.stringify({ services: chunk }),
       });
 
-      if (!res.ok) {
-        let errDetail = res.statusText;
-        try {
-          const errJson = await res.json();
-          if (errJson.error) errDetail = errJson.error;
-        } catch (_) {}
-        throw new Error(`Lote ${Math.floor(i / CHUNK_SIZE) + 1}: ${errDetail}`);
-      }
+      await throwIfNotOk(res, `Lote ${Math.floor(i / CHUNK_SIZE) + 1}`);
 
       const data = await res.json();
       if (Array.isArray(data.data)) {
@@ -62,12 +123,10 @@ export const api = {
   async updateService(id: string, service: Partial<ServiceData>): Promise<ServiceData> {
     const res = await fetch(`${API_BASE_URL}/services/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getWriteHeaders(),
       body: JSON.stringify(service),
     });
-    if (!res.ok) {
-      throw new Error(`Falha ao atualizar culto: ${res.statusText}`);
-    }
+    await throwIfNotOk(res, 'Falha ao atualizar culto');
     return res.json();
   },
 
@@ -75,18 +134,15 @@ export const api = {
   async deleteService(id: string): Promise<void> {
     const res = await fetch(`${API_BASE_URL}/services/${id}`, {
       method: 'DELETE',
+      headers: getWriteHeaders(false),
     });
-    if (!res.ok) {
-      throw new Error(`Falha ao excluir culto: ${res.statusText}`);
-    }
+    await throwIfNotOk(res, 'Falha ao excluir culto');
   },
 
   // Buscar registros de crescimento (Conexão, Batismo, Membros)
   async getGrowthRecords(year: number = 2026): Promise<GrowthRecord[]> {
     const res = await fetch(`${API_BASE_URL}/growth?year=${year}`);
-    if (!res.ok) {
-      throw new Error(`Falha ao buscar dados de crescimento: ${res.statusText}`);
-    }
+    await throwIfNotOk(res, 'Falha ao buscar dados de crescimento');
     return res.json();
   },
 
@@ -100,17 +156,10 @@ export const api = {
   }): Promise<GrowthRecord> {
     const res = await fetch(`${API_BASE_URL}/growth`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getWriteHeaders(),
       body: JSON.stringify(record),
     });
-    if (!res.ok) {
-      let errDetail = res.statusText;
-      try {
-        const errJson = await res.json();
-        if (errJson.error) errDetail = errJson.error;
-      } catch (_) {}
-      throw new Error(`Falha ao salvar registro de crescimento: ${errDetail}`);
-    }
+    await throwIfNotOk(res, 'Falha ao salvar registro de crescimento');
     return res.json();
   },
 
@@ -118,17 +167,18 @@ export const api = {
   async deleteGrowthRecord(id: string): Promise<void> {
     const res = await fetch(`${API_BASE_URL}/growth/${id}`, {
       method: 'DELETE',
+      headers: getWriteHeaders(false),
     });
-    if (!res.ok) {
-      throw new Error(`Falha ao excluir registro de crescimento: ${res.statusText}`);
-    }
+    await throwIfNotOk(res, 'Falha ao excluir registro de crescimento');
   },
 
   // Inicializar tabela no Neon Postgres caso necessário
   async initDb(): Promise<{ success: boolean; message: string }> {
     const res = await fetch(`${API_BASE_URL}/init-db`, {
       method: 'POST',
+      headers: getWriteHeaders(false),
     });
+    await throwIfNotOk(res, 'Falha ao inicializar banco');
     return res.json();
   }
 };

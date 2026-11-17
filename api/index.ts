@@ -1,11 +1,10 @@
-import express, { Request, Response, Router } from 'express';
+import express, { NextFunction, Request, Response, Router } from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { neon } from '@neondatabase/serverless';
 
 dotenv.config();
-
-const DEFAULT_NEON_URL = 'postgresql://neondb_owner:npg_zTKaut9D1RqB@ep-quiet-dust-aw3ylx9p.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
 function getDatabaseUrl(): string {
   const candidates = [
@@ -28,12 +27,64 @@ function getDatabaseUrl(): string {
     }
   }
 
-  return DEFAULT_NEON_URL;
+  throw new Error(
+    'Nenhuma URL válida do Neon Postgres (DATABASE_URL / POSTGRES_URL) foi configurada nas variáveis de ambiente.'
+  );
 }
 
 function getNeonSql() {
   const url = getDatabaseUrl();
   return neon(url);
+}
+
+function getAdminSecret(): string | null {
+  const secret =
+    process.env.ADMIN_SECRET ||
+    process.env.ADMIN_PASSWORD ||
+    process.env.API_SECRET;
+  return secret && secret.trim().length > 0 ? secret.trim() : null;
+}
+
+function isTokenValid(provided: string, expected: string): boolean {
+  const providedBuf = Buffer.from(provided, 'utf8');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  if (providedBuf.length !== expectedBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
+
+function extractAdminToken(req: Request): string {
+  const headerToken = req.header('x-admin-token');
+  if (headerToken) return headerToken.trim();
+
+  const authHeader = req.header('authorization');
+  if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice(7).trim();
+  }
+  return '';
+}
+
+function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+  const secret = getAdminSecret();
+
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+      return res.status(503).json({
+        error: 'Autenticação administrativa não configurada no servidor (defina ADMIN_SECRET).'
+      });
+    }
+    return next();
+  }
+
+  const provided = extractAdminToken(req);
+  if (!provided || !isTokenValid(provided, secret)) {
+    return res.status(401).json({
+      error: 'Não autorizado. Informe a senha administrativa para realizar alterações.'
+    });
+  }
+
+  return next();
 }
 
 // Padronização do nome do culto
@@ -157,8 +208,35 @@ const handleInitDb = async (_req: Request, res: Response) => {
   }
 };
 
-router.get('/init-db', handleInitDb);
-router.post('/init-db', handleInitDb);
+router.get('/auth/status', (_req: Request, res: Response) => {
+  res.json({ required: Boolean(getAdminSecret()) });
+});
+
+router.post('/auth/verify', (req: Request, res: Response) => {
+  const secret = getAdminSecret();
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+      return res.status(503).json({
+        ok: false,
+        error: 'Autenticação administrativa não configurada no servidor (defina ADMIN_SECRET).'
+      });
+    }
+    return res.json({ ok: true, required: false });
+  }
+
+  const provided =
+    (typeof req.body?.token === 'string' ? req.body.token.trim() : '') ||
+    extractAdminToken(req);
+
+  if (!provided || !isTokenValid(provided, secret)) {
+    return res.status(401).json({ ok: false, error: 'Senha administrativa inválida.' });
+  }
+
+  return res.json({ ok: true, required: true });
+});
+
+router.get('/init-db', requireAdminAuth, handleInitDb);
+router.post('/init-db', requireAdminAuth, handleInitDb);
 
 // GET /services - Buscar todos os cultos do Neon Postgres
 router.get('/services', async (_req: Request, res: Response) => {
@@ -189,15 +267,15 @@ router.get('/services/bulk', (_req: Request, res: Response) => {
 });
 
 // POST /services - Criar um novo culto (com upsert por nome e data)
-router.post('/services', async (req: Request, res: Response) => {
+router.post('/services', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
     const { name, date, minister, theme, adults, visitors, kids, visitorsPending } = req.body;
     const stdName = standardizeServiceType(name);
     const stdMinister = standardizeMinister(minister);
-    const adultsNum = Number(adults) || 0;
-    const visitorsNum = Number(visitors) || 0;
-    const kidsNum = Number(kids) || 0;
+    const adultsNum = Math.max(0, Number(adults) || 0);
+    const visitorsNum = Math.max(0, Number(visitors) || 0);
+    const kidsNum = Math.max(0, Number(kids) || 0);
     const total = adultsNum + kidsNum;
     const isPending = typeof visitorsPending === 'boolean' ? visitorsPending : (visitorsNum === 0 && Boolean(visitorsPending));
     const id = Math.random().toString(36).substring(2, 11);
@@ -225,7 +303,7 @@ router.post('/services', async (req: Request, res: Response) => {
 });
 
 // POST /services/bulk - Importação em lote ultra-rápida via paralelo Promise.all
-router.post('/services/bulk', async (req: Request, res: Response) => {
+router.post('/services/bulk', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
     const { services } = req.body;
@@ -270,16 +348,16 @@ router.post('/services/bulk', async (req: Request, res: Response) => {
 });
 
 // PUT /services/:id - Atualizar culto existente
-router.put('/services/:id', async (req: Request, res: Response) => {
+router.put('/services/:id', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
     const { id } = req.params;
     const { name, date, minister, theme, adults, visitors, kids, visitorsPending } = req.body;
     const stdName = standardizeServiceType(name);
     const stdMinister = standardizeMinister(minister);
-    const adultsNum = Number(adults) || 0;
-    const visitorsNum = Number(visitors) || 0;
-    const kidsNum = Number(kids) || 0;
+    const adultsNum = Math.max(0, Number(adults) || 0);
+    const visitorsNum = Math.max(0, Number(visitors) || 0);
+    const kidsNum = Math.max(0, Number(kids) || 0);
     const total = adultsNum + kidsNum;
     const isPending = typeof visitorsPending === 'boolean' ? visitorsPending : (visitorsNum > 0 ? false : undefined);
 
@@ -307,7 +385,7 @@ router.put('/services/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /services/:id - Excluir culto
-router.delete('/services/:id', async (req: Request, res: Response) => {
+router.delete('/services/:id', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
     const { id } = req.params;
@@ -342,16 +420,24 @@ router.get('/growth', async (req: Request, res: Response) => {
   }
 });
 
+const VALID_GROWTH_TYPES = new Set(['conexao', 'batismo', 'membros']);
+
 // POST /growth - Salvar ou atualizar contagem mensal de crescimento
-router.post('/growth', async (req: Request, res: Response) => {
+router.post('/growth', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
     const { type, year, month, count, notes } = req.body;
     if (!type || !year || !month) {
       return res.status(400).json({ error: 'type, year e month são obrigatórios' });
     }
+    if (!VALID_GROWTH_TYPES.has(String(type))) {
+      return res.status(400).json({ error: 'type inválido. Use conexao, batismo ou membros.' });
+    }
     const yearNum = Number(year);
     const monthNum = Number(month);
+    if (!Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({ error: 'month inválido. Informe um valor entre 1 e 12.' });
+    }
     const countNum = Math.max(0, Number(count) || 0);
     const monthLabel = MONTH_LABELS[monthNum] || `Mês ${monthNum}`;
     const id = `growth_${type}_${yearNum}_${monthNum}`;
@@ -375,7 +461,7 @@ router.post('/growth', async (req: Request, res: Response) => {
 });
 
 // DELETE /growth/:id - Excluir registro de crescimento
-router.delete('/growth/:id', async (req: Request, res: Response) => {
+router.delete('/growth/:id', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const sql = getNeonSql();
     const { id } = req.params;
